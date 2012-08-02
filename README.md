@@ -56,7 +56,7 @@ Installing:
                 iconMask: true,
                 text: 'File dialog',
                 padding: 20,
-                actionUrl: '../src/php/getfile.php',// Url of detfile.php
+                actionUrl: '../src/php/getfile.php',// Url of getfile.php
                 returnBase64Data: true
             }
         ]
