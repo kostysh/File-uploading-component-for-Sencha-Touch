@@ -5,13 +5,14 @@ Ext.Button based component for uploading files in Sencha Touch apps without page
 
 Author: Constantine V. Smirnov, kostysh(at)gmail.com, http://mindsaur.com    
 License: GNU GPL v3.0    
-Current version: 1.0    
+Current version: 1.0.1    
 ST2 version: 2.1.0 Beta1    
 ST2 SDK Tools: 2.0.0 Beta 3
 
 Versions:
 =========
-1.0 Initial release 
+- 1.0.1 Bug fixes  
+- 1.0 Initial release  
 
 Features:
 =========

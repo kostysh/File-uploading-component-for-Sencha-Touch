@@ -1,12 +1,14 @@
 <?php
-$uploaddir = '';
+$uploaddir = 'trash/';
 $uploadfile = $uploaddir . basename($_FILES['userfile']['name']);
 
 header('Content-Type: application/json; charset=utf-8');
 
 $response = new stdClass();
 
-if (move_uploaded_file($_FILES['userfile']['tmp_name'], $uploadfile)) {
+if (is_uploaded_file($_FILES['userfile']['tmp_name']) && 
+    move_uploaded_file($_FILES['userfile']['tmp_name'], $uploadfile)) {
+    
     $response->success = true;
     
     /**

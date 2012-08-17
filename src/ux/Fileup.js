@@ -5,8 +5,8 @@
  * @fileOverview File uploading component based on Ext.Button
  *
  * @author Constantine V. Smirnov kostysh(at)gmail.com
- * @date 20120801
- * @version 1.0
+ * @date 20120817
+ * @version 1.0.1
  * @license GNU GPL v3.0
  *
  * @requires Sencha Touch 2.0
@@ -390,7 +390,7 @@ Ext.define('Ext.ux.Fileup', {
             Ext.Viewport.setMasked(false);
             
             // Get server response from iframe
-            var response = iframe.dom.contentDocument.documentElement.textContent;
+            var response = iframe.dom.contentDocument.body.textContent;
             
             // Failure flag
             var fail = false;
