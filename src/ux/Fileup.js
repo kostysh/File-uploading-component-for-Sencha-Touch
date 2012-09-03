@@ -5,8 +5,8 @@
  * @fileOverview File uploading component based on Ext.Button
  *
  * @author Constantine V. Smirnov kostysh(at)gmail.com
- * @date 20120817
- * @version 1.0.1
+ * @date 20120903
+ * @version 1.0.2
  * @license GNU GPL v3.0
  *
  * @requires Sencha Touch 2.0
@@ -171,24 +171,23 @@ Ext.define('Ext.ux.Fileup', {
      */ 
     initialize: function() {
         var me = this;
-                
+        me.callParent();
+        
+        me.iframeElement.dom.setAttribute('name', 'fileUploadIframe_' + me.id);
+        me.formElement.dom.setAttribute('target', 'fileUploadIframe_' + me.id);
+        
         me.fileElement.dom.onchange = Ext.Function.bind(me.onChanged, 
-                                                        me, 
-                                                       [me.fileElement]);
+                                                        me, [me.fileElement]);
         
         me.formElement.dom.onreset = Ext.Function.bind(me.onReset, 
-                                                       me, 
-                                                      [me.formElement]);
+                                                       me, [me.formElement]);
         
         me.iframeElement.dom.onload = Ext.Function.bind(me.onIframeLoad, 
-                                                        me, 
-                                                       [me.iframeElement]);
+                                                        me, [me.iframeElement]);
         me.on({
             scope: me,
             submit: me.onSubmit
         });
-        
-        me.callParent();
     },
     
     /**

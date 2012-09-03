@@ -11,7 +11,8 @@ ST2 SDK Tools: 2.0.0 Beta 3
 
 Versions:
 =========
-- 1.0.1 Bug fixes  
+- 1.0.2 Fixed issue with multiple Fileup components on one page
+- 1.0.1 Bugs fixes  
 - 1.0 Initial release  
 
 Features:
