@@ -103,7 +103,7 @@
 	 * @cfg {String} sdkPath
 	 * This is the path to the Android SDK, if you are developing an Android application.
 	 */
-	"sdkPath":"/path/to/android-sdk",
+	"touchPath":"/path/to/android-sdk",
 	
 	/**
 	 * @cfg  androidAPILevel
