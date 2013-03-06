@@ -31,19 +31,53 @@ Ext.define('Fileup.view.Main', {
                         title: 'File uploading component'
                     },
                     
-//                    {
-//                        id: 'fileBtn',
-//                        xtype: 'fileupload',
-//                        iconCls: 'download',
-//                        iconMask: true,
-//                        ui: 'confirm',
-//                        text: 'File dialog',
-//                        padding: 20,
-//                        actionUrl: 'getfile.php',
-//                        returnBase64Data: true
-//                        
-//                        // For success and failure callbacks setup look into controller
-//                    }
+                    {
+                        html: 'You can upload file to server'
+                    },
+                    
+                    {
+                        itemId: 'fileBtn',
+                        xtype: 'fileupload',
+                        autoUpload: false,
+                        url: 'src/php/getfile.php'
+                        
+                        // For success and failure callbacks setup look into controller
+                    },
+                    
+                    {
+                        html: 'Or just load locally as DataUrl (for images)',
+                        style: 'margin-top: 10px;'
+                    },
+                    
+                    {
+                        itemId: 'fileLoadBtn',
+                        xtype: 'fileupload',
+                        autoUpload: true,
+                        loadAsDataUrl: true,
+                        states: {
+                            browse: {
+                                text: 'Browse and load'
+                            },
+                            ready: {
+                                text: 'Load'
+                            },
+
+                            uploading: {
+                                text: 'Loading',
+                                loading: true
+                            }
+                        }
+                        
+                        // For success and failure callbacks setup look into controller
+                    },
+                    
+                    {
+                        itemId: 'loadedImage',
+                        xtype: 'img',
+                        width: '80%',
+                        height: '200px',
+                        style: 'margin-top:15px;'
+                    }
                 ]
             },
             

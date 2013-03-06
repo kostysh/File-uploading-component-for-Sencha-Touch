@@ -1,7 +1,9 @@
 // Setup path for custom components in app.js
+//<debug>
 Ext.Loader.setPath({
     'Ext.ux': 'src/ux'
 });
+//</debug>
 
 Ext.application({
     name: 'Fileup',

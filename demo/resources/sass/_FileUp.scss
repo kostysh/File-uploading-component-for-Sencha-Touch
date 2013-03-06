@@ -1,0 +1,31 @@
+/*
+    Document   : _FileUp
+    Created on : Mar 3, 2013, 9:02:55 AM
+    Author     : kostysh(at)gmail.com
+    Description: Styles for FileUp component
+*/
+
+@include sencha-button-ui('fileready', #6dbc76, 'glossy');
+
+@include sencha-button-ui('fileupload', #67cef7, 'glossy');
+
+.x-fileup {
+    
+}
+
+.x-fileup-ready {
+    
+}
+
+$loading-spinner-color: #000000;
+@include sencha-loading-spinner;
+.x-fileup-uploading {
+    .x-loading-spinner {
+        font-size: 100%;
+    }
+    
+    .x-badge {
+        text-overflow: visible;
+    }
+}
+

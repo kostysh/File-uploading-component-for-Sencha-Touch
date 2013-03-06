@@ -1,33 +1,115 @@
 /**
  * @filename Fileup.js
  * 
- * @name File uploading
+ * @name File uploading component
  * @fileOverview File uploading component based on Ext.Button
  *
  * @author Constantine V. Smirnov kostysh(at)gmail.com
- * @date 20120903
- * @version 1.0.2
+ * @date 20130203
+ * @version 2.0
  * @license GNU GPL v3.0
  *
- * @requires Sencha Touch 2.0
+ * @requires Sencha Touch 2.1.1
+ * 
+ * This component can works in two modes (switched by loadAsDataUrl config):
+ * 1) Load local files as dataUrl. 
+ * Will be useful if you want to load a local file. For example you can load
+ * image and display it inside dom or store it into localStorage.
+ * 2) Upload files to server (you should also setup a server part)
+ * Current PHP version of server part located in src/php folder (getfile.php)
+ * 
+ * Server response format (JSON):
+ * {
+ *     success: true,// or false
+ *     message: ''// error message if success === false
+ * }
+ * 
+ * Component has three states:
+ * 1) Browse: Initial state, you can browse and select file
+ * 2) Ready: File selected and ready for load or upload
+ * 3) Uploading: File loading or uploading in process
+ * 
+ * You can configure these states (add custom text and styles).
+ * Default configuration below:
+ * 
+ 
+
+items: [
+
+    //Fileup configuration for "Load local file" mode
+    {
+        xtype: 'fileupload',
+        autoUpload: true,
+        loadAsDataUrl: true,
+        states: {
+            browse: {
+                text: 'Browse and load'
+            },
+            ready: {
+                text: 'Load'
+            },
+
+            uploading: {
+                text: 'Loading',
+                loading: true// Enable loading spinner on button
+            }
+        }
+    },
+    
+    //Fileup configuration for "Upload file" mode
+    {
+        itemId: 'fileBtn',
+        xtype: 'fileupload',
+        autoUpload: false,
+        url: 'src/php/getfile.php'
+    }
+]
+
+ 
  * 
  */
 
 /**
- * @event beforesubmit
- * Fired before when file uploading is started
- * @param {Object} 
+ * @event success
+ * Fired when file uploaded successfully
+ * @param {Object} response Response object obtained from server
+ * @param {Object} xhr Link to XMLHttpRequest object
+ * @param {Object} e Success event
  */
 
 /**
- * @event submit
- * Fired when file uploading is started
- * @param {Object} 
+ * @event failure
+ * Fired when file not uploaded or server just returns error message
+ * @param {String} message Parsed error message obtained from server
+ * @param {Object} response Response object obtained from server
+ * @param {Object} xhr Link to XMLHttpRequest object
+ * @param {Object} e Uploading error event
+ */
+
+/**
+ * @event loadsuccess
+ * Fired when file uploaded successfully
+ * @param {Object} dataUrl DataUrl source of readed file
+ * @param {Object} reader Link to FileReader object
+ * @param {Object} e Load event
+ */
+
+/**
+ * @event loadfailure
+ * Fired when file not uploaded or server just returns error message
+ * @param {String} message Parsed error message obtained from server
+ * @param {Object} reader Link to FileReader object
+ * @param {Object} e Loading error event
  */
 
 Ext.define('Ext.ux.Fileup', {
     extend: 'Ext.Button',
     xtype: 'fileupload',
+    
+    requires: [
+        'Ext.MessageBox',
+        'Ext.device.Notification'
+    ],
     
     template: [
         
@@ -49,42 +131,40 @@ Ext.define('Ext.ux.Fileup', {
             hidden: true
         },
         
-        // Custom inline elements
+        // Loading spinner
         {
-            tag: 'iframe',
-            reference: 'iframeElement',
-            height: 0,
-            width: 0,
-            frameborder: 0,
-            name: 'fileUploadIframe',
-            loading: 0
-        },
-        {
-            tag: 'form',
-            reference: 'formElement',
-            target: 'fileUploadIframe',
-            method: 'post',
-            enctype: 'multipart/form-data',
-            action: null,
-            hidden: false,            
+            tag: 'div',
+            className: Ext.baseCSSPrefix + 'loading-spinner',
+            reference: 'loadingElement',
+            hidden: true,
             
             children: [
                 {
-                    tag: 'input',
-                    reference: 'base64CommandElement',
-                    type: 'hidden',
-                    name: 'base64',
-                    value: false,
-                    tabindex: -1
+                    tag: 'span',
+                    className: Ext.baseCSSPrefix + 'loading-top'
                 },
                 {
-                    tag: 'input',
-                    reference: 'urlCommandElement',
-                    type: 'hidden',
-                    name: 'url',
-                    value: false,
-                    tabindex: -1
+                    tag: 'span',
+                    className: Ext.baseCSSPrefix + 'loading-right'
                 },
+                {
+                    tag: 'span',
+                    className: Ext.baseCSSPrefix + 'loading-bottom'
+                },
+                {
+                    tag: 'span',
+                    className: Ext.baseCSSPrefix + 'loading-left'
+                }
+            ]
+        },
+                
+        // Hidden file element
+        {
+            tag: 'form',
+            reference: 'formElement',
+            hidden: false,            
+            
+            children: [
                 {
                     tag: 'input',
                     reference: 'fileElement',
@@ -92,355 +172,320 @@ Ext.define('Ext.ux.Fileup', {
                     name: 'userfile',
                     tabindex: -1,
                     hidden: false,
-                    style: 'opacity:0;position:absolute;height:100%;width:100%;left:0px;top:0px;'
+                    style: 'opacity:0;position:absolute;top:-3px;right:-3px;bottom:-3px;left:-3px;z-index:16777270;'
                 }
             ]
         }
-    ],       
+    ],
+    
+    // Default button states config
+    defaultStates: {
+        browse: {
+            text: 'Browse',
+            cls: Ext.baseCSSPrefix + 'fileup',
+            ui: 'filebrowse'
+        },
 
+        ready: {
+            text: 'Upload',
+            cls: Ext.baseCSSPrefix + 'fileup-ready',
+            ui: 'fileready'
+        },
+
+        uploading: {
+            text: 'Uploading',
+            cls: Ext.baseCSSPrefix + 'fileup-uploading',
+            ui: 'fileupload',
+            loading: true
+        }
+    },
+    
+    // Current button state
+    currentState: null,
+    
     config: {
+        cls: Ext.baseCSSPrefix + 'fileup',
         
         /**
-         * @cfg {string} name Input element name, check on server part for $_FILES['userfile']
+         * @cfg {String} name Input element name, check on server for $_FILES['userfile']
          */        
         name: 'userfile',
         
         /**
-         * @cfg {string/boolean} loadingText Loading maks text message (null for disable)
+         * @cfg {Boolean} autoUpload 
+         * If true then "uploading" state will start after "ready" event automatically
          */
-        loadingText: 'Uploading, please wait...',
+        autoUpload: false,
         
         /**
-         * @cfg {boolean/object} callbacks Callbacks configuration for succes and failure
-         * 
-         * ...
-         * callbacks: {
-         *     success: function(response) {
-         *         console.log('Success', response);
-         *     },
-         *     failure: function(error, response) {
-         *         console.log('Failure', error);
-         *     }
-         * }
-         * 
+         * @cfg {Object} states 
          */
-        callbacks: null,
+        states: true,
         
         /**
-         * @cfg {boolean} autoUpload Automatic upload file on onchange event
+         * @cfg {Boolean} loadAsDataUrl
          */
-        autoUpload: true,
+        loadAsDataUrl: false,
         
         /**
-         * @cfg {string} actionUrl Server side script URL
+         * @cfg {String} url URL to uploading handler script on server
          */
-        actionUrl: null,
-        
-        /**
-         * @cfg {object/boolean} subscribe External event configuration
-         * 
-         * from component config
-         * ...
-         * subscribe: {
-         *     scope: externalObject,
-         *     event: 'ontap'
-         * }
-         * 
-         * and from controller:
-         * ...
-         * fileFormObj.setSubscribe({
-         *     scope: this.getExternalObject(),
-         *     event: 'ontap'
-         * });
-         */
-        subscribe: false, // Subscribe to external events
-        
-        /**
-         * @cfg {boolean} returnBase64Data Command for server to return encoded image with base64 algorifm
-         */
-        returnBase64Data: false,
-        
-        /**
-         * @cfg {boolean} returnUrl Command for server to return direct path to loaded file on web
-         */
-        returnUrl: false
+        url: ''
     },
-
-    /**
-     * @private
-     */ 
+    
+    // @private
+    applyStates: function(states) {
+        var me = this;
+        
+        if (states) {
+            
+            if (Ext.isObject(states)) {
+                
+                // Merge custom config with default
+                return Ext.merge({}, me.defaultStates, states);
+            } else {
+                return me.defaultStates;
+            }
+        } else {
+            return me.defaultStates;
+        }
+    },
+    
+    // @private
     initialize: function() {
         var me = this;
         me.callParent();
         
-        me.iframeElement.dom.setAttribute('name', 'fileUploadIframe_' + me.id);
-        me.formElement.dom.setAttribute('target', 'fileUploadIframe_' + me.id);
+        me.fileElement.dom.onchange = function() {
+            me.onChanged.apply(me, arguments);
+        };
         
-        me.fileElement.dom.onchange = Ext.Function.bind(me.onChanged, 
-                                                        me, [me.fileElement]);
-        
-        me.formElement.dom.onreset = Ext.Function.bind(me.onReset, 
-                                                       me, [me.formElement]);
-        
-        me.iframeElement.dom.onload = Ext.Function.bind(me.onIframeLoad, 
-                                                        me, [me.iframeElement]);
         me.on({
             scope: me,
-            submit: me.onSubmit
+            buffer: 250,// Avoid multiple tap 
+            tap: me.onButtonTap
         });
+        
+        // Stup initial button state
+        me.changeState('browse');
+    },
+    
+    // @private
+    onButtonTap: function() {
+        var me = this;
+        
+        switch (me.currentState) {
+            
+            // Currently we handle tap event while button in ready state
+            // because in all other states button is not accessible
+            case 'ready':                
+                me.changeState('uploading');
+                var file = me.fileElement.dom.files[0];
+                                
+                if (!me.getLoadAsDataUrl()) {
+                    me.fireEvent('uploadstart', file);
+                    me.doUpload(file);                
+                } else {
+                    me.doLoad(file);
+                }
+                break;
+        }
+    },
+    
+    // @private
+    onChanged: function(e) {
+        var me = this;
+        
+        if (e.target.files.length > 0) {
+            me.fireAction('ready', [e.target.files[0]], function() {
+                me.changeState('ready');
+            }, me);
+        } else {
+            Ext.device.Notification.show({
+                title: 'Error',
+                message: 'File selected but not accessible',
+                buttons: Ext.MessageBox.OK,
+                callback: function() {
+                    me.changeState('browse');
+                }
+            });
+        }
+    },
+    
+    // @private
+    changeState: function(state) {
+        var me = this;
+        var states = me.getStates();
+        
+        if (Ext.isDefined(states[state])) {
+            
+            // Common tasks for all states
+            if (states[state].text) {
+                me.setText(states[state].text);
+            } else {
+                me.setText('');
+            }
+            
+            if (states[state].cls) {
+                me.setCls(states[state].cls);
+            } else {
+                me.setCls('');
+            }
+            
+            if (states[state].ui) {
+                me.setUi(states[state].ui);
+            } else {
+                me.setUi('normal');
+            }
+            
+            if (states[state].loading) {
+                me.loadingElement.show();
+            } else {
+                me.loadingElement.hide();
+            }
+            
+            // State specific tasks
+            switch (state) {
+                case 'browse':
+                    me.currentState = 'browse';
+                    me.reset();                    
+                    break;
+                    
+                case 'ready':
+                    me.currentState = 'ready';
+                    me.fileElement.hide();
+                    
+                    if (me.getAutoUpload()) {
+                        me.onButtonTap();
+                    }                    
+                    break;
+                    
+                case 'uploading':
+                    me.currentState = 'uploading';
+                    break;
+            }
+        } else {
+            // <debug>
+            Ext.Logger.warn('Config for FileUp state "'+ state +'" not found!');
+            // </debug>
+        }
     },
     
     /**
-     * Validate callbacks
      * @private
+     * @method doLoad
+     * Read selected file as dataUrl value.
+     * If you wish to get dataUrl content 
+     * then you should listen for "loadsuccess" event
+     * @param {Object} file Link to loaded file element
      */
-    applyCallbacks: function(config) {
-        if (Ext.isObject(config) && 
-            Ext.isFunction(config.success) &&
-            Ext.isFunction(config.failure)) {
+    doLoad: function(file) {
+        var me = this;                
+        var reader = new FileReader();
+
+        reader.onerror = function(e) {
+            var message;
+            switch (e.target.error.code) {
+                case e.target.error.NOT_FOUND_ERR:
+                    message = 'File Not Found';
+                    break;
+
+                case e.target.error.NOT_READABLE_ERR:
+                    message = 'File is not readable';
+                    break;
+
+                case e.target.error.ABORT_ERR:
+                    break;
+
+                default:
+                    message = 'Can not read file';
+            };
+            me.fireEvent('loadfailure', message, this, e);
+        };
+
+        reader.onload = function(e) {
+            me.fireEvent('loadsuccess', this.result, this, e);
+            me.changeState('browse');
+        };
+
+        // Read image file
+        reader.readAsDataURL(file);
+    },
+    
+    /**
+     * @private
+     * @method doUpload
+     * Upload selected file using XMLHttpRequest.
+     * @param {Object} file Link to loaded file element
+     */
+    doUpload: function(file) {
+        var me = this;        
+        var http = new XMLHttpRequest();
+        
+        if (http.upload && http.upload.addEventListener) {
             
-            return config;
-        } else {
+            // Uploading progress handler
+            http.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    var percentComplete = (e.loaded / e.total) * 100; 
+                    me.setBadgeText(percentComplete + '%');
+                }
+            };
             
-            return {
-                success: Ext.emptyFn,
-                failure: Ext.emptyFn
+            // Response handler
+            http.onreadystatechange = function (e) {
+                if (this.readyState == 4) {
+                    if(this.status == 200) {
+                        
+                        var response = Ext.decode(this.responseText, true)
+                        
+                        if (response && response.success) {
+                            // Success
+                            me.fireEvent('success', response, this, e);
+                        } else if (response && response.message) {
+                            // Failure
+                            me.fireEvent('failure', response.message, response, this, e);
+                        } else {
+                            // Failure
+                            me.fireEvent('failure', 'Unknown error', response, this, e);
+                        }
+                        
+                    } else {
+                        
+                        // Failure
+                        me.fireEvent('failure', this.status + ' ' + this.statusText, response, this, e);
+                    }
+                    
+                    me.changeState('browse');
+                }
+            };
+            
+            // Error handler
+            http.upload.onerror = function(e) {
+                me.fireEvent('failure', this.status + ' ' + this.statusText, {}, this, e);
             };
         }
+        
+        // Create FormData object
+        var form = new FormData();
+        
+        // Add selected file to form
+        form.append(me.getName(), file);
+        
+        // Send form with file using XMLHttpRequest POST request
+        http.open('POST', me.getUrl());
+        http.send(form);
     },
     
     /**
-     * Setup success and failure event handlers
-     * @private
+     * @method reset
+     * Component reset
      */
-    updateCallbacks: function(newConfig, oldConfig) {
+    reset: function() {
         var me = this;
         
-        if (oldConfig) {
-            me.un({
-                success: oldConfig.success,
-                failure: oldConfig.failure
-            });
-        }
-        
-        me.on({
-            scope: me,
-            success: newConfig.success,
-            failure: newConfig.failure
-        }); 
-    },
-    
-    /**
-     * @private
-     */
-    updateReturnBase64Data: function(command) {
-        if (command) {
-            this.base64CommandElement.dom.setAttribute('value', true);
-        } else {
-            this.base64CommandElement.dom.setAttribute('value', false);
-        }
-    },
-    
-    /**
-     * @private
-     */
-    updateReturnUrl: function(command) {
-        if (command) {
-            this.urlCommandElement.dom.setAttribute('value', true);
-        } else {
-            this.urlCommandElement.dom.setAttribute('value', false);
-        }
-    },
-    
-    /**
-     * @private
-     */
-    updateSubscribe: function(newConfig, oldConfig) {
-        if (Ext.isObject(oldConfig)) {
-            newConfig.scope.un(oldConfig.event,
-                               this.doAutoUpload,
-                               oldConfig.scope);
-        }
-        
-        if (Ext.isObject(newConfig) &&
-            Ext.isObject(newConfig.scope) &&
-            Ext.isString(newConfig.event)) {
-            
-            newConfig.scope.on(newConfig.event,
-                               this.doAutoUpload,
-                               newConfig.scope);
-        } 
-    },
-    
-    /**
-     * @private
-     */
-    updateActionUrl: function(newUrl) {
-        if (newUrl) {
-            this.formElement.dom.setAttribute('action', newUrl);
-        }
-    },
-    
-    /**
-     * @private
-     */
-    updateName: function(newName) {
-        this.fileElement.dom.setAttribute('name', newName);
-    },
-    
-    /**
-     * @private
-     */
-    onReset: function() {
-        this.setBadgeText(null);
-    },
-    
-    /**
-     * @private
-     */
-    onChanged: function() {
-        var value = this.fileElement.dom.value;
-        var fileName = value.slice(value.lastIndexOf('\\')+1);
-        this.setBadgeText(Ext.util.Format.ellipsis(fileName, 16));
-        
-        if (this.getAutoUpload()) {
-            this.doAutoUpload();
-        }
-    },
-    
-    /**
-     * @private
-     */
-    doAutoUpload: function() {
-        var config = this.getCallbacks();
-        
-        if (Ext.isObject(config)) {
-            this.submit(config);
-        }        
-    },
-    
-    /**
-     * Submit selected files to server
-     * @method
-     */
-    submit: function() {
-        var me = this; 
-        
-        if (!me.formElement.dom.action) {
-            Ext.Logger.warn('Form action not defined');
-            return;            
-        }
-        
-        // Do not alow submit while uploading in process
-        if (me.iframeElement.dom.loading == 1) {
-            return;
-        }
-            
-        if (!me.fileElement.dom.value) {
-                
-            // Open file selecting dialog
-            me.fileElement.dom.click();
-            return;
-        }
-            
-        return me.fireAction('beforesubmit', [me], 'doSubmit');
-    },
-    
-    /**
-     * @private
-     */
-    doSubmit: function() {
-        this.fireEvent('submit');
-    },
-    
-    /**
-     * @private
-     */
-    onSubmit: function() {
-        
-        // Set up loading mode for iframe
-        this.iframeElement.dom.setAttribute('loading', 1);
-        
-        if (this.getLoadingText()) {
-            
-            // Show uplading mask
-            Ext.Viewport.setMasked({
-                xtype: 'loadmask',
-                message: this.getLoadingText()
-            });
-        }
-            
-        
-        // Submit form
-        this.formElement.dom.submit();
-    },
-    
-    /**
-     * @private
-     */
-    onIframeLoad: function(iframe) {
-        var me = this;
-        var loading = parseInt(iframe.dom.getAttribute('loading'));        
-        
-        if (loading !== 0) {
-            iframe.dom.setAttribute('loading', 0);
-            
-            // Hide uploading mask
-            Ext.Viewport.setMasked(false);
-            
-            // Get server response from iframe
-            var response = iframe.dom.contentDocument.body.textContent;
-            
-            // Failure flag
-            var fail = false;
-            
-            // Process loaded content            
-            try {
-                var responseDecoded = Ext.decode(response);
-            } catch(e) {
-                
-                if (iframe.dom.contentDocument.title.search('404') >= 0) {
-                    me.fireEvent('failure', {
-                        title: 'Server response',
-                        message: '404 Not Found',
-                        time: new Date()
-                    }, response); 
-                } else {
-                    me.fireEvent('failure', e, response);
-                }                
-                
-                fail = true;
-            }
-            
-            if (fail) {
-                return;
-            }            
-            
-            if (responseDecoded.success == true) {
-                me.fireAction('success', [responseDecoded], 'doResetForm');                
-            } else {
-                me.fireEvent('failure', {
-                    title: 'Server response',
-                    message: response.error || 'Unknown error',
-                    time: new Date()
-                }, responseDecoded);
-            }
-            
-        }
-    },
-    
-    /**
-     * @private
-     */
-    doResetForm: function() {
-        
-        // Reset form
-        this.formElement.dom.reset();
-    },
-    
-    /**
-     * File form reset
-     * @method
-     */
-    reset: this.doResetForm
+        me.setBadgeText(null);
+        me.formElement.dom.reset();
+        me.fileElement.show();
+    }
 });

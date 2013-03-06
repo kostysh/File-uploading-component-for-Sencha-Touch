@@ -1,35 +1,53 @@
-File-uploading-component-for-Sencha-Touch
+File uploading component for Sencha Touch
 =========================================
 
-Ext.Button based component for uploading files in Sencha Touch apps without page refresh 
+Ext.Button based component for uploading files in Sencha Touch apps
 
 Author: Constantine V. Smirnov, kostysh(at)gmail.com, http://mindsaur.com    
 License: GNU GPL v3.0    
-Current version: 1.0.1    
-ST2 version: 2.1.0 Beta1    
-ST2 SDK Tools: 2.0.0 Beta 3
+Current version: 2.0    
+ST2 version: 2.1.1    
+Sencha Cmd: v3.0.2.288
 
 Versions:
 =========
+- 2.0
 - 1.0.2 Fixed issue with multiple Fileup components on one page
 - 1.0.1 Bugs fixes  
 - 1.0 Initial release  
 
 Features:
 =========
-- File uploading without page refresh  
-- Autoupload  
-- Subscribe upload feature to external event  
-- Custom styling (same to Ext.Button component styling)  
-- File name as button badge  
-- Android (4.0 up) browser support as regular   
-- Google Chrome for desktop and mobile
-- iOS Safari browser support from version 6.0 (not tested on mobile)  
+- Select file from local source
+- Load selected file as dataUrl
+- Upload selected file to server
+- Loading spinner on button
+- Uploading progress displayed on badge
+- Uploading error handling
+- Custom styles for component using SASS
 
-Known issues:
+Notes:
 =============
-- Strange behaviour on Google Chrome mobile (page reload after image selected)  
-- Android browser for ICS crashes while large images loading  
+This component can works in two modes (switched by loadAsDataUrl config):
+1) Load local files as dataUrl. 
+Will be useful if you want to load a local file. For example you can load
+image and display it inside dom or store it into localStorage.
+2) Upload files to server (you should also setup a server part)
+Current PHP version of server part located in src/php folder (getfile.php)
+ 
+Server response format (JSON):
+{
+     success: true,// or false
+     message: ''// error message if success === false
+}
+ 
+Component has three states:
+1) Browse: Initial state, you can browse and select file
+2) Ready: File selected and ready for load or upload
+3) Uploading: File loading or uploading in process
+
+You can configure these states (add custom text and styles).
+Looking for SASS file in src/ux/sass folder.
 
 Installing:
 ===========
@@ -51,40 +69,48 @@ Installing:
 <!-- language: lang-js -->
         
         items: [
+
+            //Fileup configuration for "Load local file" mode
             {
-                id: 'fileBtn',
                 xtype: 'fileupload',
-                iconCls: 'download',
-                iconMask: true,
-                text: 'File dialog',
-                padding: 20,
-                actionUrl: '../src/php/getfile.php',// Url of getfile.php
-                returnBase64Data: true
+                autoUpload: true,
+                loadAsDataUrl: true,
+                states: {
+                    browse: {
+                        text: 'Browse and load'
+                    },
+                    ready: {
+                        text: 'Load'
+                    },
+
+                    uploading: {
+                        text: 'Loading',
+                        loading: true// Enable loading spinner on button
+                    }
+                }
+            },
+
+            //Fileup configuration for "Upload file" mode
+            {
+                itemId: 'fileBtn',
+                xtype: 'fileupload',
+                autoUpload: false,
+                url: 'src/php/getfile.php'
             }
         ]
-        
-- Setup base64 and returnUrl options via component config:
-<!-- language: lang-js -->
-        
-        returnBase64Data: true,// or false
-        returnUrl: true
         
 - Enable or disable auto upload of file via component config:
 <!-- language: lang-js -->
         
-        autoUpload: true,// If false you can use fileBtn.submit(); method
+        autoUpload: true,
                 
-- Setup submit callbacks via config or inside controller (see demo):
+- Listen for success/failure or loadsuccess/loadfailure events:
 <!-- language: lang-js -->
         
-        var fileBtn = Ext.getCmp('fileBtn');
-        fileBtn.setCallbacks({
-            scope: this,
-            success: this.onFileUploadSuccess,
-            failure: this.onFileUploadFailure
+        fileBtn.on({
+            success: 'yourFileUploadSuccessHandler',
+            failure: 'yourFileUploadFailureHandler'
         });
-        
-- On uploading success use response object.
         
 Live demo: 
 ==========
