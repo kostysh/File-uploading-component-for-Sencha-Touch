@@ -12,7 +12,7 @@ Sencha Cmd: v3.0.2.288
 Versions:
 =========
 - 2.0
-- 1.0.2 Fixed issue with multiple Fileup components on one page
+- [1.0.2](https://github.com/kostysh/File-uploading-component-for-Sencha-Touch/tree/1.0.2) Fixed issue with multiple Fileup components on one page
 - 1.0.1 Bugs fixes  
 - 1.0 Initial release  
 
