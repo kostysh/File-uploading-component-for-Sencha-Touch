@@ -37,7 +37,7 @@ Ext.define('Fileup.controller.Main', {
         });
     },
     
-    onFileUploadFailure: function() {
+    onFileUploadFailure: function(message) {
         console.log('Failure');
                 
         Ext.device.Notification.show({

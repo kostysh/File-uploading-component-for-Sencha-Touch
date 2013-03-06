@@ -205,6 +205,7 @@ Ext.define('Ext.ux.Fileup', {
     
     config: {
         cls: Ext.baseCSSPrefix + 'fileup',
+        badgeCls: Ext.baseCSSPrefix + 'fileup-badge',
         
         /**
          * @cfg {String} name Input element name, check on server for $_FILES['userfile']
@@ -348,7 +349,7 @@ Ext.define('Ext.ux.Fileup', {
             switch (state) {
                 case 'browse':
                     me.currentState = 'browse';
-                    me.reset();                    
+                    me.reset();
                     break;
                     
                 case 'ready':
@@ -428,7 +429,7 @@ Ext.define('Ext.ux.Fileup', {
             http.upload.onprogress = function(e) {
                 if (e.lengthComputable) {
                     var percentComplete = (e.loaded / e.total) * 100; 
-                    me.setBadgeText(percentComplete + '%');
+                    me.setBadgeText(percentComplete.toFixed(0) + '%');
                 }
             };
             
