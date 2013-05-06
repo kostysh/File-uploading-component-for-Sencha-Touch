@@ -231,7 +231,11 @@ Ext.define('Ext.ux.Fileup', {
         /**
          * @cfg {String} url URL to uploading handler script on server
          */
-        url: ''
+        url: '',
+        /**
+         * @cfg {Object} postData Additional data to post along with the file.
+         */
+        postData: {}
     },
     
     // @private
@@ -473,6 +477,20 @@ Ext.define('Ext.ux.Fileup', {
         // Add selected file to form
         form.append(me.getName(), file);
         
+        // Add additional POST data along with this file.
+        var postData = me.getPostData(), postValue = null;
+        for (var param in postData) {
+          if (postData.hasOwnProperty(param)) {
+            postValue = postData[param];
+            if (typeof postValue === 'function') {
+              form.append(param, postValue.call(this));
+            }
+            else {
+              form.append(param, postValue);
+            }
+          }
+        }
+
         // Send form with file using XMLHttpRequest POST request
         http.open('POST', me.getUrl());
         http.send(form);
