@@ -466,17 +466,28 @@ Ext.define('Ext.ux.Fileup', {
             };
         }
         
-        // Create FormData object
-        var form = new FormData();
-        
-        // Add selected file to form
-        form.append(me.getName(), file);
-        
         // Send form with file using XMLHttpRequest POST request
         http.open('POST', me.getUrl());
-        http.send(form);
+        http.send(me.getForm(file));
     },
     
+    /**
+     * @method getForm
+     * Returns the form to send to the browser.
+     *
+     * @param {Object} file Link to loaded file element
+     */
+    getForm: function(file) {
+      // Create FormData object
+      var form = new FormData();
+
+      // Add selected file to form
+      form.append(this.getName(), file);
+
+      // Return the form.
+      return form;
+    },
+
     /**
      * @method reset
      * Component reset
