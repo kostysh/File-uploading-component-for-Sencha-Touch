@@ -454,7 +454,7 @@ Ext.define('Ext.ux.Fileup', {
                     
                     if(Ext.Array.indexOf(qqq, parseInt(this.status))) {
                         
-                        var response = Ext.decode(this.responseText, true)
+                        var response = me.decodeResponse(this);
                         
                         if (response && response.success) {
                             // Success
@@ -527,6 +527,18 @@ Ext.define('Ext.ux.Fileup', {
         me.setBadgeText(null);
         me.formElement.dom.reset();
         me.fileElement.show();
+    },
+    
+    /**
+     * @private
+     * @method decodeResponse
+     * Decodes a server response.
+     *
+     * @param {Object} response The response from the server to decode
+     * @return {Object} The response to provide to the library
+     */
+    decodeResponse: function(response) {
+        return Ext.decode(response.responseText, true);
     },
     
     /**
