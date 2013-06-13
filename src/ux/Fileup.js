@@ -468,9 +468,27 @@ Ext.define('Ext.ux.Fileup', {
         
         // Send form with file using XMLHttpRequest POST request
         http.open('POST', me.getUrl());
-        http.send(me.getForm(file));
+
+        // Sign the request and then send.
+        me.signRequest(http, function(http) {
+
+          // Send the form.
+          http.send(me.getForm(file));
+        });
     },
     
+    /**
+     * Sign the request before sending it.
+     *
+     * @param {object} request
+     *   The XHR request object.
+     * @param {function} callback
+     *   Called when the request has been signed.
+     */
+    signRequest: function(http, callback) {
+      callback(http);
+    },
+
     /**
      * @method getForm
      * Returns the form to send to the browser.
