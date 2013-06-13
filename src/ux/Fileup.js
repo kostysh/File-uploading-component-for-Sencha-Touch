@@ -5,8 +5,8 @@
  * @fileOverview File uploading component based on Ext.Button
  *
  * @author Constantine V. Smirnov kostysh(at)gmail.com
- * @date 20130203
- * @version 2.0
+ * @date 20130614
+ * @version 2.0.1
  * @license GNU GPL v3.0
  *
  * @requires Sencha Touch 2.1.1
@@ -108,7 +108,8 @@ Ext.define('Ext.ux.Fileup', {
     
     requires: [
         'Ext.MessageBox',
-        'Ext.device.Notification'
+        'Ext.device.Notification',
+        'Ext.Array'
     ],
     
     template: [
@@ -230,7 +231,22 @@ Ext.define('Ext.ux.Fileup', {
         /**
          * @cfg {String} url URL to uploading handler script on server
          */
-        url: ''
+        url: '',
+        
+        /**
+         * @cfg {Boolean} signRequestEnabled Enable or disable request signing feature
+         */
+        signRequestEnabled: false,
+        
+        /**
+         * @cfg {String} signHeader Signing token header name
+         */
+        signHeader: '',
+        
+        /**
+         * @cfg {Array} defaultSuccessCodes Http response success codes
+         */
+        defaultSuccessCodes: [200, 201]
     },
     
     // @private
@@ -435,7 +451,8 @@ Ext.define('Ext.ux.Fileup', {
             // Response handler
             http.onreadystatechange = function (e) {
                 if (this.readyState == 4) {
-                    if(this.status == 200) {
+                    
+                    if(Ext.Array.indexOf(qqq, parseInt(this.status))) {
                         
                         var response = Ext.decode(this.responseText, true)
                         
@@ -468,7 +485,19 @@ Ext.define('Ext.ux.Fileup', {
         
         // Send form with file using XMLHttpRequest POST request
         http.open('POST', me.getUrl());
-        http.send(me.getForm(file));
+        
+        if (me.getSignRequestEnabled()) {
+            
+            // Sign the request and then send.
+            me.signRequest(http, function(http) {
+    
+              // Send the form.
+              http.send(me.getForm(file));
+            });
+        } else {
+            http.send(me.getForm(file));
+        }
+        
     },
     
     /**
@@ -498,5 +527,44 @@ Ext.define('Ext.ux.Fileup', {
         me.setBadgeText(null);
         me.formElement.dom.reset();
         me.fileElement.show();
+    },
+    
+    /**
+     * @private
+     * @method signRequest
+     * Sign the request before sending it.
+     *
+     * @param {Object} request The XHR request object.
+     * @param {Function} callback Called when the request has been signed.
+     */
+    signRequest: function(http, callback) {
+        var me = this;
+        var header = me.getSignHeader(); 
+        
+        if (!header) {
+            me.fireEvent('failure', 'Request signing header is not defined');
+        }
+        
+        me.signProvider( 
+            function(token) {
+                http.setRequestHeader(header, token);
+                callback(http);
+            },
+            function(failureText) {
+                me.fireEvent('failure', 'Request signing is failed! ' + 
+                                        failureText, {}, this, e);
+            });
+    },
+    
+    /**
+     * @private
+     * @method signProvider
+     * Default token provider (should be redefined)
+     *
+     * @param {Function} success Success callback
+     * @param {Function} callback Signing failure callback
+     */
+    signProvider: function(success, failure) {
+        success('default-token');// Default behaviour
     }
 });
