@@ -5,12 +5,13 @@ Ext.Button based component for uploading files in Sencha Touch apps
 
 Author: Constantine V. Smirnov, kostysh(at)gmail.com, http://mindsaur.com    
 License: GNU GPL v3.0    
-Current version: 2.0    
+Current version: 2.0.1    
 ST2 version: 2.1.1    
 Sencha Cmd: v3.0.2.288
 
 Versions:
 =========
+- 2.0.1 Added uploading request signing feature, custom response decoder, configurable success response codes
 - 2.0
 - [1.0.2](https://github.com/kostysh/File-uploading-component-for-Sencha-Touch/tree/1.0.2) Fixed issue with multiple Fileup components on one page
 - 1.0.1 Bugs fixes  
@@ -24,6 +25,9 @@ Features:
 - Loading spinner on button
 - Uploading progress displayed on badge
 - Uploading error handling
+- Uploading request signing feature
+- Custom response decoder
+- Configurable success response codes
 - Custom styles for component using SASS
 
 Notes:
