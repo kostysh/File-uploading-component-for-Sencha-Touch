@@ -437,7 +437,7 @@ Ext.define('Ext.ux.Fileup', {
                 if (this.readyState == 4) {
                     if(this.status == 200) {
                         
-                        var response = Ext.decode(this.responseText, true)
+                        var response = me.decodeResponse(this);
                         
                         if (response && response.success) {
                             // Success
@@ -468,9 +468,40 @@ Ext.define('Ext.ux.Fileup', {
         
         // Send form with file using XMLHttpRequest POST request
         http.open('POST', me.getUrl());
-        http.send(me.getForm(file));
+
+        // Sign the request and then send.
+        me.signRequest(http, function(http) {
+
+          // Send the form.
+          http.send(me.getForm(file));
+        });
     },
     
+    /**
+     * Sign the request before sending it.
+     *
+     * @param {object} request
+     *   The XHR request object.
+     * @param {function} callback
+     *   Called when the request has been signed.
+     */
+    signRequest: function(http, callback) {
+      callback(http);
+    },
+
+    /**
+     * Decodes a server response.
+     *
+     * @param {object} response
+     *   The response from the server to decode.
+     *
+     * @return {object}
+     *   The response to provide to the library.
+     */
+    decodeResponse: function(response) {
+      return Ext.decode(response.responseText, true);
+    },
+
     /**
      * @method getForm
      * Returns the form to send to the browser.
