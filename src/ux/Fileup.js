@@ -452,7 +452,7 @@ Ext.define('Ext.ux.Fileup', {
             http.onreadystatechange = function (e) {
                 if (this.readyState == 4) {
                     
-                    if(Ext.Array.indexOf(qqq, parseInt(this.status))) {
+                    if(Ext.Array.indexOf(me.getDefaultSuccessCodes(), parseInt(this.status))) {
                         
                         var response = me.decodeResponse(this);
                         
