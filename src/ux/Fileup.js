@@ -564,7 +564,7 @@ Ext.define('Ext.ux.Fileup', {
             },
             function(failureText) {
                 me.fireEvent('failure', 'Request signing is failed! ' + 
-                                        failureText, {}, this, e);
+                                        failureText, {}, this);
             });
     },
     
