@@ -18,7 +18,7 @@
 }
 
 $loading-spinner-color: #000000;
-@include sencha-loading-spinner;
+@include st-loading-spinner;
 .x-fileup-uploading {
     .x-loading-spinner {
         font-size: 100%;

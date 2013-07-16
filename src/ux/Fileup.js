@@ -108,7 +108,8 @@ Ext.define('Ext.ux.Fileup', {
     
     requires: [
         'Ext.MessageBox',
-        'Ext.device.Notification'
+        'Ext.device.Notification',
+        'Ext.Array'
     ],
     
     template: [
@@ -230,7 +231,22 @@ Ext.define('Ext.ux.Fileup', {
         /**
          * @cfg {String} url URL to uploading handler script on server
          */
-        url: ''
+        url: '',
+        
+        /**
+         * @cfg {Boolean} signRequestEnabled Enable or disable request signing feature
+         */
+        signRequestEnabled: false,
+        
+        /**
+         * @cfg {String} signHeader Signing token header name
+         */
+        signHeader: '',
+        
+        /**
+         * @cfg {Array} defaultSuccessCodes Http response success codes
+         */
+        defaultSuccessCodes: [200, 201]
     },
     
     // @private
@@ -435,9 +451,10 @@ Ext.define('Ext.ux.Fileup', {
             // Response handler
             http.onreadystatechange = function (e) {
                 if (this.readyState == 4) {
-                    if(this.status == 200) {
+                    
+                    if(Ext.Array.indexOf(me.getDefaultSuccessCodes(), parseInt(this.status))) {
                         
-                        var response = Ext.decode(this.responseText, true)
+                        var response = me.decodeResponse(this);
                         
                         if (response && response.success) {
                             // Success
@@ -466,17 +483,40 @@ Ext.define('Ext.ux.Fileup', {
             };
         }
         
-        // Create FormData object
-        var form = new FormData();
-        
-        // Add selected file to form
-        form.append(me.getName(), file);
-        
         // Send form with file using XMLHttpRequest POST request
         http.open('POST', me.getUrl());
-        http.send(form);
+        
+        if (me.getSignRequestEnabled()) {
+            
+            // Sign the request and then send.
+            me.signRequest(http, function(http) {
+    
+              // Send the form.
+              http.send(me.getForm(file));
+            });
+        } else {
+            http.send(me.getForm(file));
+        }
+        
     },
     
+    /**
+     * @method getForm
+     * Returns the form to send to the browser.
+     *
+     * @param {Object} file Link to loaded file element
+     */
+    getForm: function(file) {
+      // Create FormData object
+      var form = new FormData();
+
+      // Add selected file to form
+      form.append(this.getName(), file);
+
+      // Return the form.
+      return form;
+    },
+
     /**
      * @method reset
      * Component reset
@@ -487,5 +527,56 @@ Ext.define('Ext.ux.Fileup', {
         me.setBadgeText(null);
         me.formElement.dom.reset();
         me.fileElement.show();
+    },
+    
+    /**
+     * @private
+     * @method decodeResponse
+     * Decodes a server response.
+     *
+     * @param {Object} response The response from the server to decode
+     * @return {Object} The response to provide to the library
+     */
+    decodeResponse: function(response) {
+        return Ext.decode(response.responseText, true);
+    },
+    
+    /**
+     * @private
+     * @method signRequest
+     * Sign the request before sending it.
+     *
+     * @param {Object} request The XHR request object.
+     * @param {Function} callback Called when the request has been signed.
+     */
+    signRequest: function(http, callback) {
+        var me = this;
+        var header = me.getSignHeader(); 
+        
+        if (!header) {
+            me.fireEvent('failure', 'Request signing header is not defined');
+        }
+        
+        me.signProvider( 
+            function(token) {
+                http.setRequestHeader(header, token);
+                callback(http);
+            },
+            function(failureText) {
+                me.fireEvent('failure', 'Request signing is failed! ' + 
+                                        failureText, {}, this);
+            });
+    },
+    
+    /**
+     * @private
+     * @method signProvider
+     * Default token provider (should be redefined)
+     *
+     * @param {Function} success Success callback
+     * @param {Function} callback Signing failure callback
+     */
+    signProvider: function(success, failure) {
+        success('default-token');// Default behaviour
     }
 });
