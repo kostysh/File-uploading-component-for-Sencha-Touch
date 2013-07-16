@@ -450,9 +450,9 @@ Ext.define('Ext.ux.Fileup', {
             
             // Response handler
             http.onreadystatechange = function (e) {
-                if (this.readyState == 4) {
+                if (this.readyState === 4) {
                     
-                    if(Ext.Array.indexOf(me.getDefaultSuccessCodes(), parseInt(this.status))) {
+                    if(Ext.Array.indexOf(me.getDefaultSuccessCodes(), parseInt(this.status)) !== -1 ) {
                         
                         var response = me.decodeResponse(this);
                         
@@ -546,7 +546,7 @@ Ext.define('Ext.ux.Fileup', {
      * @method signRequest
      * Sign the request before sending it.
      *
-     * @param {Object} request The XHR request object.
+     * @param {Object} http The XHR request object.
      * @param {Function} callback Called when the request has been signed.
      */
     signRequest: function(http, callback) {
@@ -573,8 +573,8 @@ Ext.define('Ext.ux.Fileup', {
      * @method signProvider
      * Default token provider (should be redefined)
      *
-     * @param {Function} success Success callback
-     * @param {Function} callback Signing failure callback
+     * @param {Function} success Signing success callback
+     * @param {Function} failure Signing failure callback
      */
     signProvider: function(success, failure) {
         success('default-token');// Default behaviour
