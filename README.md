@@ -56,6 +56,8 @@ Looking for SASS file in src/ux/sass folder.
 Installing:
 ===========
 - Place src/php to your server (you can write your own version of this script)
+- Create folder for uploads on your server and make this folder writable
+- Configure getfile.php (second line, path to your folder for uploads)  
 - Place src to your app folder;
 - Configure custom path for custom components: 
 <!-- language: lang-js -->
