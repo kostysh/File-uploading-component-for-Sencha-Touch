@@ -1,5 +1,5 @@
 /*
-This file is part of Sencha Touch 2.1
+This file is part of Sencha Touch 2.2
 
 Copyright (c) 2011-2013 Sencha Inc
 
@@ -13,7 +13,7 @@ terms contained in a written agreement between you and Sencha.
 If you are unsure which license is appropriate for your use, please contact the sales department
 at http://www.sencha.com/contact.
 
-Build date: 2013-02-05 12:25:50 (3ba7c63bea96e5ea776e2bbd67cfb0aa01e43322)
+Build date: 2013-05-21 08:48:57 (ed9733df54b93a8cc276c2207eacb9b215f77857)
 */
 //@tag foundation,core
 //@define Ext
@@ -1229,8 +1229,8 @@ Ext.String = {
      *     alert(s); // '<div class="my-class">Some text</div>'
      *
      * @param {String} string The tokenized string to be formatted.
-     * @param {String} value1 The value to replace token {0}.
-     * @param {String} value2 Etc...
+     * @param {String...} values First param value to replace token `{0}`, then next
+     * param to replace `{1}` etc.
      * @return {String} The formatted string.
      */
     format: function(format) {
@@ -3030,6 +3030,39 @@ var ExtObject = Ext.Object = {
         return objectClass;
     },
 
+    equals: function(origin, target) {
+        var originType = typeof origin,
+            targetType = typeof target,
+            key;
+
+        if (targetType === targetType) {
+            if (originType === 'object') {
+                for (key in origin) {
+                    if (!(key in target)) {
+                        return false;
+                    }
+
+                    if (!ExtObject.equals(origin[key], target[key])) {
+                        return false;
+                    }
+                }
+
+                for (key in target) {
+                    if (!(key in origin)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            else {
+                return origin === target;
+            }
+        }
+
+        return false;
+    },
+
     defineProperty: ('defineProperty' in Object) ? Object.defineProperty : function(object, name, descriptor) {
         if (descriptor.get) {
             object.__defineGetter__(name, descriptor.get);
@@ -3125,7 +3158,7 @@ Ext.Function = {
      *         name3: 'value3'
      *     });
      *
-     * @param {Function} setter
+     * @param {Function} fn
      * @return {Function} flexSetter
      */
     flexSetter: function(fn) {
@@ -4183,7 +4216,7 @@ var noArgs = [],
          *
          *     Ext.define('My.CatOverride', {
          *         override: 'My.Cat',
-         *         
+         *
          *         constructor: function() {
          *             alert("I'm going to be a cat!");
          *
@@ -4212,7 +4245,8 @@ var noArgs = [],
                 enumerables = Ext.enumerables,
                 target = me.prototype,
                 cloneFunction = Ext.Function.clone,
-                name, index, member, statics, names, previous;
+                currentConfig = target.config,
+                name, index, member, statics, names, previous, newConfig, prop;
 
             if (arguments.length === 2) {
                 name = members;
@@ -4230,7 +4264,16 @@ var noArgs = [],
                         statics = members[name];
                     }
                     else if (name == 'config') {
-                        me.addConfig(members[name], true);
+                        newConfig = members[name];
+                        //<debug error>
+                        for (prop in newConfig) {
+                            if (!(prop in currentConfig)) {
+                                throw new Error("Attempting to override a non-existant config property. This is not " +
+                                    "supported, you must extend the Class.");
+                            }
+                        }
+                        //</debug>
+                        me.addConfig(newConfig, true);
                     }
                     else {
                         names.push(name);
@@ -4568,7 +4611,7 @@ var noArgs = [],
          *      });
          *
          *      alert(My.Derived2.method(10)); // now alerts 40
-         * 
+         *
          * To override a method and replace it and also call the superclass method, use
          * {@link #callSuper}. This is often done to patch a method to fix a bug.
          *
@@ -4617,40 +4660,40 @@ var noArgs = [],
          * This method is used by an override to call the superclass method but bypass any
          * overridden method. This is often done to "patch" a method that contains a bug
          * but for whatever reason cannot be fixed directly.
-         * 
+         *
          * Consider:
-         * 
+         *
          *      Ext.define('Ext.some.Class', {
          *          method: function () {
          *              console.log('Good');
          *          }
          *      });
-         * 
+         *
          *      Ext.define('Ext.some.DerivedClass', {
          *          method: function () {
          *              console.log('Bad');
-         * 
+         *
          *              // ... logic but with a bug ...
-         *              
+         *
          *              this.callParent();
          *          }
          *      });
-         * 
+         *
          * To patch the bug in `DerivedClass.method`, the typical solution is to create an
          * override:
-         * 
+         *
          *      Ext.define('App.paches.DerivedClass', {
          *          override: 'Ext.some.DerivedClass',
-         *          
+         *
          *          method: function () {
          *              console.log('Fixed');
-         * 
+         *
          *              // ... logic but with bug fixed ...
          *
          *              this.callSuper();
          *          }
          *      });
-         * 
+         *
          * The patch method cannot use `callParent` to call the superclass `method` since
          * that would call the overridden method containing the bug. In other words, the
          * above patch would only produce "Fixed" then "Good" in the console log, whereas,
@@ -4694,7 +4737,7 @@ var noArgs = [],
 
         /**
          * Call the original method that was previously overridden with {@link Ext.Base#override},
-         * 
+         *
          * This method is deprecated as {@link #callParent} does the same thing.
          *
          *     Ext.define('My.Cat', {
@@ -4723,12 +4766,10 @@ var noArgs = [],
          * from the current method, for example: `this.callOverridden(arguments)`
          * @return {Object} Returns the result of calling the overridden method
          * @protected
-         * @deprecated Use callParent instead
          */
         callOverridden: function(args) {
-            var method;
-
-            return (method = this.callOverridden.caller) && method.$previous.apply(this, args || noArgs);
+            var method = this.callOverridden.caller;
+            return method  && method.$previous.apply(this, args || noArgs);
         },
 
         /**
@@ -5257,9 +5298,12 @@ var noArgs = [],
          *
          * @param {Function} fn.cls The created class.
          * @param {Object} fn.data The set of properties passed in {@link Ext.Class} constructor.
-         * @param {Function} fn.fn The callback function that __must__ to be executed when this pre-processor finishes,
-         * regardless of whether the processing is synchronous or asynchronous.
-         *
+         * @param {Function} fn.fn The callback function that __must__ to be executed when this
+         * pre-processor finishes, regardless of whether the processing is synchronous or
+         * asynchronous.
+         * @param {String[]} [properties]
+         * @param {String} [position]
+         * @param {Object} [relativeTo]
          * @return {Ext.Class} this
          */
         registerPreprocessor: function(name, fn, properties, position, relativeTo) {
@@ -5436,14 +5480,15 @@ var noArgs = [],
 
                 if (applier) {
                     value = applier.call(this, value, oldValue);
+                    if (typeof value == 'undefined') {
+                        return this;
+                    }
                 }
 
-                if (typeof value != 'undefined') {
-                    this[internalName] = value;
+                this[internalName] = value;
 
-                    if (updater && value !== oldValue) {
-                        updater.call(this, value, oldValue);
-                    }
+                if (updater && value !== oldValue) {
+                    updater.call(this, value, oldValue);
                 }
 
                 return this;
@@ -5574,6 +5619,137 @@ var noArgs = [],
         Class.addInheritableStatics(data.inheritableStatics);
 
         delete data.inheritableStatics;
+    });
+    //</feature>
+
+        //<feature classSystem.platformConfig>
+    /**
+     * @cfg {Object} platformConfig
+     * Allows for setting default config values on specific platforms or themes
+     *
+     *     Ext.define('MyComponent', {
+     *          config: {
+     *              top: 0
+     *          },
+     *
+     *          platformConfig: [{
+     *              platform: ['ie10'],
+     *              theme: ['Windows'],
+     *              top: null,
+     *              bottom: 0
+     *          }]
+     *     });
+     */
+    ExtClass.registerPreprocessor('platformConfig', function(Class, data, hooks) {
+        var platformConfigs = data.platformConfig,
+            config = data.config || {},
+            platform, theme, platformConfig, i, ln, j , ln2;
+
+        delete data.platformConfig;
+
+        if (!Ext.filterPlatform) {
+            Ext.filterPlatform = function(platform) {
+                var profileMatch = false,
+                    ua = navigator.userAgent,
+                    j, jln;
+
+                platform = [].concat(platform);
+
+                function isPhone(ua) {
+                    var isMobile = /Mobile(\/|\s)/.test(ua);
+
+                    // Either:
+                    // - iOS but not iPad
+                    // - Android 2
+                    // - Android with "Mobile" in the UA
+
+                    return /(iPhone|iPod)/.test(ua) ||
+                              (!/(Silk)/.test(ua) && (/(Android)/.test(ua) && (/(Android 2)/.test(ua) || isMobile))) ||
+                              (/(BlackBerry|BB)/.test(ua) && isMobile) ||
+                              /(Windows Phone)/.test(ua);
+                }
+
+                function isTablet(ua) {
+                    return !isPhone(ua) && (/iPad/.test(ua) || /Android/.test(ua) || /(RIM Tablet OS)/.test(ua) ||
+                        (/MSIE 10/.test(ua) && /; Touch/.test(ua)));
+                }
+
+                // Check if the ?platform parameter is set in the URL
+                var paramsString = window.location.search.substr(1),
+                    paramsArray = paramsString.split("&"),
+                    params = {},
+                    testPlatform, i;
+
+                for (i = 0; i < paramsArray.length; i++) {
+                    var tmpArray = paramsArray[i].split("=");
+                    params[tmpArray[0]] = tmpArray[1];
+                }
+
+                testPlatform = params.platform;
+                if (testPlatform) {
+                    return platform.indexOf(testPlatform) != -1;
+                }
+
+                for (j = 0, jln = platform.length; j < jln; j++) {
+                    switch (platform[j]) {
+                        case 'phone':
+                            profileMatch = isPhone(ua);
+                            break;
+                        case 'tablet':
+                            profileMatch = isTablet(ua);
+                            break;
+                        case 'desktop':
+                            profileMatch = !isPhone(ua) && !isTablet(ua);
+                            break;
+                        case 'ios':
+                            profileMatch = /(iPad|iPhone|iPod)/.test(ua);
+                            break;
+                        case 'android':
+                            profileMatch = /(Android|Silk)/.test(ua);
+                            break;
+                        case 'blackberry':
+                            profileMatch = /(BlackBerry|BB)/.test(ua);
+                            break;
+                        case 'safari':
+                            profileMatch = /Safari/.test(ua) && !(/(BlackBerry|BB)/.test(ua));
+                            break;
+                        case 'chrome':
+                            profileMatch = /Chrome/.test(ua);
+                            break;
+                        case 'ie10':
+                            profileMatch = /MSIE 10/.test(ua);
+                            break;
+                    }
+                    if (profileMatch) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+        }
+
+        for (i = 0, ln = platformConfigs.length; i < ln; i++) {
+            platformConfig = platformConfigs[i];
+
+            platform = platformConfig.platform;
+            delete platformConfig.platform;
+
+            theme = [].concat(platformConfig.theme);
+            ln2 = theme.length;
+            delete platformConfig.theme;
+
+            if (platform && Ext.filterPlatform(platform)) {
+                Ext.merge(config, platformConfig);
+            }
+
+            if (ln2) {
+                for (j = 0; j < ln2; j++) {
+                    if (Ext.theme.name == theme[j]) {
+                        Ext.merge(config, platformConfig);
+                    }
+                }
+            }
+        }
     });
     //</feature>
 
@@ -5791,15 +5967,23 @@ var noArgs = [],
         members.extend = Parent;
         members.preprocessors = [
             'extend'
+
             //<feature classSystem.statics>
             ,'statics'
             //</feature>
+
             //<feature classSystem.inheritableStatics>
             ,'inheritableStatics'
             //</feature>
+
             //<feature classSystem.mixins>
             ,'mixins'
             //</feature>
+
+            //<feature classSystem.platformConfig>
+            ,'platformConfig'
+            //</feature>
+
             //<feature classSystem.config>
             ,'config'
             //</feature>
@@ -6608,7 +6792,13 @@ var noArgs = [],
             Ext.require(requires, function() {
                 // Override the target class right after it's created
                 this.onCreated(function() {
-                    this.get(overriddenClassName).override(data);
+                    var overridenClass = this.get(overriddenClassName);
+                    if (overridenClass.singleton) {
+                        overridenClass.self.override(data);
+                    }
+                    else {
+                        overridenClass.override(data);
+                    }
 
                     // This push the overridding file itself into Ext.Loader.history
                     // Hence if the target class never exists, the overriding file will
@@ -6797,10 +6987,7 @@ var noArgs = [],
 
         /**
          * Register a post-processor function.
-         *
          * @private
-         * @param {String} name
-         * @param {Function} postprocessor
          */
         registerPostprocessor: function(name, fn, properties, position, relativeTo) {
             if (!position) {
@@ -6826,7 +7013,7 @@ var noArgs = [],
          * Set the default post processors array stack which are applied to every class.
          *
          * @private
-         * @param {String/Array} The name of a registered post processor or an array of registered names.
+         * @param {String/Array} postprocessors The name of a registered post processor or an array of registered names.
          * @return {Ext.ClassManager} this
          */
         setDefaultPostprocessors: function(postprocessors) {
@@ -7078,6 +7265,8 @@ var noArgs = [],
          *
          * @member Ext
          * @method widget
+         * @param {String} name
+         * @return {Object} instance
          */
         widget: function(name) {
             var args = arraySlice.call(arguments);
@@ -7090,6 +7279,9 @@ var noArgs = [],
          * Convenient shorthand, see {@link Ext.ClassManager#instantiateByAlias}.
          * @member Ext
          * @method createByAlias
+         * @param {String} alias
+         * @param {Mixed...} args Additional arguments after the alias will be passed to the class constructor.
+         * @return {Object} instance
          */
         createByAlias: alias(Manager, 'instantiateByAlias'),
 
@@ -7482,7 +7674,7 @@ var noArgs = [],
  * It has all the advantages combined from asynchronous and synchronous loading. The development flow is simple:
  *
  * ### Step 1: Start writing your application using synchronous approach. ###
- * Ext.Loader will automatically fetch all dependencies on demand as they're 
+ * Ext.Loader will automatically fetch all dependencies on demand as they're
  * needed during run-time. For example:
  *
  *     Ext.onReady(function(){
@@ -7631,7 +7823,9 @@ var noArgs = [],
          *
          * Refer to config options of {@link Ext.Loader} for the list of possible properties.
          *
-         * @param {Object} config The config object to override the default values.
+         * @param {Object/String} name The config object to override the default values
+         * or name of a single config setting when also passing the second parameter.
+         * @param {Mixed} [value] The value for the config setting.
          * @return {Ext.Loader} this
          */
         setConfig: function(name, value) {
@@ -7851,7 +8045,7 @@ var noArgs = [],
 
         /**
          * Maintain the queue for all dependencies. Each item in the array is an object of the format:
-         * 
+         *
          *     {
          *         requires: [...], // The required classes for this queue item
          *         callback: function() { ... } // The function to execute when all classes specified in requires exist
@@ -8026,11 +8220,6 @@ var noArgs = [],
 
         /**
          * Load a script file, supports both asynchronous and synchronous approaches
-         *
-         * @param {String} url
-         * @param {Function} onLoad
-         * @param {Object} scope
-         * @param {Boolean} synchronous
          * @private
          */
         loadScriptFile: function(url, onLoad, onError, scope, synchronous) {
@@ -8196,7 +8385,7 @@ var noArgs = [],
                         if (excluded[possibleClassName] !== true) {
                             references.push(possibleClassName);
 
-                            if (!Manager.isCreated(possibleClassName) && !included[possibleClassName]) {
+                            if (!Manager.isCreated(possibleClassName) && !included[possibleClassName]/* && !this.requiresMap.hasOwnProperty(possibleClassName)*/) {
                                 included[possibleClassName] = true;
                                 classNames.push(possibleClassName);
                             }
@@ -8672,7 +8861,7 @@ var noArgs = [],
         path = path + "../../../";
     }
     //</debug>
-    
+
 
     Loader.setConfig({
         enabled: true,
@@ -8681,7 +8870,7 @@ var noArgs = [],
             'Ext' : path + 'src'
         }
     });
-    
+
 })();
 
 //@tag dom,core
@@ -8734,7 +8923,7 @@ var noArgs = [],
  *
  * [getting_started]: #!/guide/getting_started
  */
-Ext.setVersion('touch', '2.1.1');
+Ext.setVersion('touch', '2.2.1');
 
 Ext.apply(Ext, {
     /**
@@ -8761,7 +8950,7 @@ Ext.apply(Ext, {
     },
 
     /**
-     * Generates unique ids. If the element already has an `id`, it is unchanged.
+     * Generates unique ids. If the element is passes and it already has an `id`, it is unchanged.
      * @param {Mixed} el (optional) The element to generate an id for.
      * @param {String} [prefix=ext-gen] (optional) The `id` prefix.
      * @return {String} The generated `id`.
@@ -8774,16 +8963,16 @@ Ext.apply(Ext, {
         el = Ext.getDom(el) || {};
 
         if (el === document || el === document.documentElement) {
-            el.id = 'ext-application';
+            el.id = 'ext-app';
         }
         else if (el === document.body) {
-            el.id = 'ext-viewport';
+            el.id = 'ext-body';
         }
         else if (el === window) {
             el.id = 'ext-window';
         }
 
-        el.id = el.id || ((prefix || 'ext-element-') + (++Ext.idSeed));
+        el.id = el.id || ((prefix || 'ext-') + (++Ext.idSeed));
 
         return el.id;
     },
@@ -9170,11 +9359,11 @@ Ext.apply(Ext, {
      * Please note that there's no automatic fallback mechanism for the startup images. In other words, if you don't specify
      * a valid image for a certain device, nothing will be displayed while the application is being launched on that device.
      *
-     * @param {Boolean} isIconPrecomposed
+     * @param {Boolean} config.isIconPrecomposed
      * True to not having a glossy effect added to the icon by the OS, which will preserve its exact look. This currently
      * only applies to iOS devices.
      *
-     * @param {String} statusBarStyle
+     * @param {String} config.statusBarStyle
      * The style of status bar to be shown on applications added to the iOS home screen. Valid options are:
      *
      * * `default`
@@ -9310,10 +9499,26 @@ Ext.apply(Ext, {
                     Ext.require(requires, callback);
                 }
             });
+
+            if (!Ext.microloaded && navigator.userAgent.match(/IEMobile\/10\.0/)) {
+                var msViewportStyle = document.createElement("style");
+                msViewportStyle.appendChild(
+                    document.createTextNode(
+                        "@media screen and (orientation: portrait) {" +
+                            "@-ms-viewport {width: 320px !important;}" +
+                        "}" +
+                        "@media screen and (orientation: landscape) {" +
+                            "@-ms-viewport {width: 560px !important;}" +
+                        "}"
+                    )
+                );
+                head.appendChild(msViewportStyle);
+            }
         });
 
         function addMeta(name, content) {
             var meta = document.createElement('meta');
+
             meta.setAttribute('name', name);
             meta.setAttribute('content', content);
             head.append(meta);
@@ -9345,6 +9550,7 @@ Ext.apply(Ext, {
             statusBarStyle = config.statusBarStyle,
             devicePixelRatio = window.devicePixelRatio || 1;
 
+
         if (navigator.standalone) {
             addMeta('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0');
         }
@@ -9353,6 +9559,9 @@ Ext.apply(Ext, {
         }
         addMeta('apple-mobile-web-app-capable', 'yes');
         addMeta('apple-touch-fullscreen', 'yes');
+        if (Ext.browser.is.ie) {
+            addMeta('msapplication-tap-highlight', 'no');
+        }
 
         // status bar style
         if (statusBarStyle) {
@@ -10012,12 +10221,30 @@ Ext.apply(Ext, {
                 }
             }
             else {
-                if (document.readyState.match(/interactive|complete|loaded/) !== null) {
+                var readyStateRe =  (/MSIE 10/.test(navigator.userAgent)) ? /complete|loaded/ : /interactive|complete|loaded/;
+                if (document.readyState.match(readyStateRe) !== null) {
                     triggerFn();
                 }
                 else if (!Ext.readyListenerAttached) {
                     Ext.readyListenerAttached = true;
-                    window.addEventListener('DOMContentLoaded', triggerFn, false);
+                    window.addEventListener('DOMContentLoaded', function() {
+                        if (navigator.standalone) {
+                            // When running from Home Screen, the splash screen will not disappear until all
+                            // external resource requests finish.
+                            // The first timeout clears the splash screen
+                            // The second timeout allows inital HTML content to be displayed
+                            setTimeout(function() {
+                                setTimeout(function() {
+                                    triggerFn();
+                                }, 1);
+                            }, 1);
+                        }
+                        else {
+                          setTimeout(function() {
+                              triggerFn();
+                          }, 1);
+                        }
+                    }, false);
                 }
             }
         }
@@ -10072,7 +10299,9 @@ Ext.Object.defineProperty(Ext, 'Msg', {
  * @private
  */
 Ext.define('Ext.env.Browser', {
-    requires: ['Ext.Version'],
+               
+                     
+      
 
     statics: {
         browserNames: {
@@ -10105,7 +10334,7 @@ Ext.define('Ext.env.Browser', {
             firefox: 'Firefox/',
             chrome: 'Chrome/',
             safari: 'Version/',
-            opera: 'Opera/',
+            opera: 'OPR/',
             dolfin: 'Dolfin/',
             webosbrowser: 'wOSBrowser/',
             chromeMobile: 'CrMo/',
@@ -10241,10 +10470,6 @@ Ext.define('Ext.env.Browser', {
          */
         this.userAgent = userAgent;
 
-        is = this.is = function(name) {
-            return is[name] === true;
-        };
-
         var statics = this.statics(),
             browserMatch = userAgent.match(new RegExp('((?:' + Ext.Object.getValues(statics.browserPrefixes).join(')|(?:') + '))([\\w\\._]+)')),
             engineMatch = userAgent.match(new RegExp('((?:' + Ext.Object.getValues(statics.enginePrefixes).join(')|(?:') + '))([\\w\\._]+)')),
@@ -10257,9 +10482,12 @@ Ext.define('Ext.env.Browser', {
             isWebView = false,
             is, i, name;
 
+        is = this.is = function(name) {
+            return is[name] === true;
+        };
+
         if (browserMatch) {
             browserName = browserNames[Ext.Object.getKey(statics.browserPrefixes, browserMatch[1])];
-
             browserVersion = new Ext.Version(browserMatch[2]);
         }
 
@@ -10277,6 +10505,12 @@ Ext.define('Ext.env.Browser', {
 
         if (userAgent.match(/Android.*Chrome/g)) {
             browserName = 'ChromeMobile';
+        }
+
+        if (userAgent.match(/OPR/)) {
+            browserName = 'Opera';
+            browserMatch = userAgent.match(/OPR\/(\d+.\d+)/);
+            browserVersion = new Ext.Version(browserMatch[1]);
         }
 
         Ext.apply(this, {
@@ -10318,9 +10552,13 @@ Ext.define('Ext.env.Browser', {
 
         this.setFlag('Standalone', !!navigator.standalone);
 
+        this.setFlag('Ripple', !!document.getElementById("tinyhippos-injected") && !Ext.isEmpty(window.top.ripple));
+        this.setFlag('WebWorks', !!window.blackberry);
+
         if (typeof window.PhoneGap != 'undefined' || typeof window.Cordova != 'undefined' || typeof window.cordova != 'undefined') {
             isWebView = true;
             this.setFlag('PhoneGap');
+            this.setFlag('Cordova');
         }
         else if (!!window.isNK) {
             isWebView = true;
@@ -10366,6 +10604,19 @@ Ext.define('Ext.env.Browser', {
         }
 
         return name;
+    },
+
+    getPreferredTranslationMethod: function(config) {
+        if (typeof config == 'object' && 'translationMethod' in config && config.translationMethod !== 'auto') {
+            return config.translationMethod;
+        } else {
+            if (this.is.AndroidStock2 || this.is.IE) {
+                return 'scrollposition';
+            }
+            else {
+                return 'csstransform';
+            }
+        }
     }
 
 }, function() {
@@ -10407,12 +10658,13 @@ Ext.define('Ext.env.Browser', {
  */
 Ext.define('Ext.env.OS', {
 
-    requires: ['Ext.Version'],
+                              
 
     statics: {
         names: {
             ios: 'iOS',
             android: 'Android',
+            windowsPhone: 'WindowsPhone',
             webos: 'webOS',
             blackberry: 'BlackBerry',
             rimTablet: 'RIMTablet',
@@ -10420,16 +10672,19 @@ Ext.define('Ext.env.OS', {
             win: 'Windows',
             linux: 'Linux',
             bada: 'Bada',
+            chrome: 'ChromeOS',
             other: 'Other'
         },
         prefixes: {
             ios: 'i(?:Pad|Phone|Pod)(?:.*)CPU(?: iPhone)? OS ',
             android: '(Android |HTC_|Silk/)', // Some HTC devices ship with an OSX userAgent by default,
                                         // so we need to add a direct check for HTC_
+            windowsPhone: 'Windows Phone ',
             blackberry: '(?:BlackBerry|BB)(?:.*)Version\/',
             rimTablet: 'RIM Tablet OS ',
             webos: '(?:webOS|hpwOS)\/',
-            bada: 'Bada\/'
+            bada: 'Bada\/',
+            chrome: 'CrOS '
         }
     },
 
@@ -10511,13 +10766,15 @@ Ext.define('Ext.env.OS', {
         return this;
     },
 
-    constructor: function(userAgent, platform) {
+    constructor: function(userAgent, platform, browserScope) {
         var statics = this.statics(),
             names = statics.names,
             prefixes = statics.prefixes,
             name,
             version = '',
-            i, prefix, match, item, is;
+            i, prefix, match, item, is, match1;
+
+        browserScope = browserScope || Ext.browser;
 
         is = this.is = function(name) {
             return this.is[name] === true;
@@ -10531,12 +10788,17 @@ Ext.define('Ext.env.OS', {
 
                 if (match) {
                     name = names[i];
+                    match1 = match[1];
 
                     // This is here because some HTC android devices show an OSX Snow Leopard userAgent by default.
                     // And the Kindle Fire doesn't have any indicator of Android as the OS in its User Agent
-                    if (match[1] && (match[1] == "HTC_" || match[1] == "Silk/")) {
+                    if (match1 && match1 == "HTC_") {
                         version = new Ext.Version("2.3");
-                    } else {
+                    }
+                    else if (match1 && match1 == "Silk/") {
+                        version = new Ext.Version("2.3");
+                    }
+                    else {
                         version = new Ext.Version(match[match.length - 1]);
                     }
 
@@ -10577,6 +10839,19 @@ Ext.define('Ext.env.OS', {
         // Detect if the device is the iPhone 5.
         if (this.name == "iOS" && window.screen.height == 568) {
             this.setFlag('iPhone5');
+        }
+
+
+        if (browserScope.is.Safari || browserScope.is.Silk) {
+            // Ext.browser.version.shortVersion == 501 is for debugging off device
+            if (this.is.Android2 || this.is.Android3 || browserScope.version.shortVersion == 501) {
+                browserScope.setFlag("AndroidStock");
+                browserScope.setFlag("AndroidStock2");
+            }
+            if (this.is.Android4) {
+                browserScope.setFlag("AndroidStock");
+                browserScope.setFlag("AndroidStock4");
+            }
         }
 
         return this;
@@ -10630,13 +10905,13 @@ Ext.define('Ext.env.OS', {
         deviceType = 'Tablet';
     }
     else {
-        if (!osEnv.is.Android && !osEnv.is.iOS && /Windows|Linux|MacOS/.test(osName)) {
+        if (!osEnv.is.Android && !osEnv.is.iOS && !osEnv.is.WindowsPhone && /Windows|Linux|MacOS/.test(osName)) {
             deviceType = 'Desktop';
 
             // always set it to false when you are on a desktop
             Ext.browser.is.WebView = false;
         }
-        else if (osEnv.is.iPad || osEnv.is.RIMTablet || osEnv.is.Android3 || (osEnv.is.Android4 && userAgent.search(/mobile/i) == -1)) {
+        else if (osEnv.is.iPad || osEnv.is.RIMTablet || osEnv.is.Android3 || Ext.browser.is.Silk || (osEnv.is.Android4 && userAgent.search(/mobile/i) == -1)) {
             deviceType = 'Tablet';
         }
         else {
@@ -10676,14 +10951,14 @@ Ext.define('Ext.env.OS', {
 
 /**
  * Provides information about browser.
- * 
+ *
  * Should not be manually instantiated unless for unit-testing.
  * Access the global instance stored in {@link Ext.browser} instead.
  * @private
  */
 Ext.define('Ext.env.Feature', {
 
-    requires: ['Ext.env.Browser', 'Ext.env.OS'],
+                                                
 
     constructor: function() {
         this.testElements = {};
@@ -10692,7 +10967,32 @@ Ext.define('Ext.env.Feature', {
             return !!this.has[name];
         };
 
-        return this;
+        if (!Ext.theme) {
+            Ext.theme = {
+                name: 'Default'
+            };
+        }
+
+        Ext.onDocumentReady(function() {
+            this.registerTest({
+                ProperHBoxStretching: function() {
+                    // IE10 currently has a bug in their flexbox row layout. We feature detect the issue here.
+                    var bodyElement = document.createElement('div'),
+                        innerElement = bodyElement.appendChild(document.createElement('div')),
+                        contentElement = innerElement.appendChild(document.createElement('div')),
+                        innerWidth;
+
+                    bodyElement.setAttribute('style', 'width: 100px; height: 100px; position: relative;');
+                    innerElement.setAttribute('style', 'position: absolute; display: -ms-flexbox; display: -webkit-flex; display: -moz-flexbox; display: flex; -ms-flex-direction: row; -webkit-flex-direction: row; -moz-flex-direction: row; flex-direction: row; min-width: 100%;');
+                    contentElement.setAttribute('style', 'width: 200px; height: 50px;');
+                    document.body.appendChild(bodyElement);
+                    innerWidth = innerElement.offsetWidth;
+                    document.body.removeChild(bodyElement);
+
+                    return (innerWidth > 100);
+                }
+            });
+        }, this);
     },
 
     getTestElement: function(tag, createNew) {
@@ -10720,6 +11020,16 @@ Ext.define('Ext.env.Feature', {
 
         if (typeof elementStyle[name] !== 'undefined'
             || typeof elementStyle[Ext.browser.getStylePrefix(name) + cName] !== 'undefined') {
+            return true;
+        }
+
+        return false;
+    },
+
+    isStyleSupportedWithoutPrefix: function(name, tag) {
+        var elementStyle = this.getTestElement(tag).style;
+
+        if (typeof elementStyle[name] !== 'undefined') {
             return true;
         }
 
@@ -10784,7 +11094,7 @@ Ext.define('Ext.env.Feature', {
      *     }
      *
      * See the {@link #has} property/method for details of the features that can be detected.
-     * 
+     *
      * @aside guide environment_package
      */
     Ext.feature = new this;
@@ -10795,7 +11105,7 @@ Ext.define('Ext.env.Feature', {
      * @method has
      * @member Ext.feature
      * Verifies if a browser feature exists or not on the current device.
-     * 
+     *
      * A "hybrid" property, can be either accessed as a method call, i.e:
      *
      *     if (Ext.feature.has('Canvas')) {
@@ -10807,7 +11117,7 @@ Ext.define('Ext.env.Feature', {
      *     if (Ext.feature.has.Canvas) {
      *         // ...
      *     }
-     * 
+     *
      * Possible properties/parameter values:
      *
      * - Canvas
@@ -10831,7 +11141,7 @@ Ext.define('Ext.env.Feature', {
      * - Video - supports the `<video>` tag.
      * - ClassList - supports the HTML5 classList API.
      * - LocalStorage - LocalStorage is supported and can be written to.
-     * 
+     *
      * [1]: https://developer.mozilla.org/en/DOM/range
      * [2]: https://developer.mozilla.org/en/DOM/range.createContextualFragment
      * [3]: https://developer.mozilla.org/en/DOM/Manipulating_the_browser_history#The_pushState().C2.A0method
@@ -10863,7 +11173,11 @@ Ext.define('Ext.env.Feature', {
         },
 
         Touch: function() {
-            return this.isEventSupported('touchstart') && !(Ext.os && Ext.os.name.match(/Windows|MacOS|Linux/) && !Ext.os.is.BlackBerry6);
+            return Ext.browser.is.Ripple || (this.isEventSupported('touchstart') && !(Ext.os && Ext.os.name.match(/Windows|MacOS|Linux/) && !Ext.os.is.BlackBerry6));
+        },
+
+        Pointer: function() {
+            return !!window.navigator.msPointerEnabled;
         },
 
         Orientation: function() {
@@ -10907,9 +11221,13 @@ Ext.define('Ext.env.Feature', {
             return this.isStyleSupported('transform');
         },
 
+        CssTransformNoPrefix: function() {
+            return this.isStyleSupportedWithoutPrefix('transform');
+        },
+
         Css3dTransforms: function() {
             // See https://sencha.jira.com/browse/TOUCH-1544
-            return this.has('CssTransforms') && this.isStyleSupported('perspective') && !Ext.os.is.Android2;
+            return this.has('CssTransforms') && this.isStyleSupported('perspective') && !Ext.browser.is.AndroidStock2;
         },
 
         CssAnimations: function() {
@@ -10958,7 +11276,9 @@ Ext.define('Ext.env.Feature', {
 
 /**
  * @class Ext.DomQuery
- * @alternateClassName Ext.dom.Query
+ * @alternateClassName Ext.core.DomQuery
+ * @extend Ext.dom.Query
+ * @singleton
  *
  * Provides functionality to select elements on the page based on a CSS selector. Delegates to
  * document.querySelectorAll. More information can be found at
@@ -11016,6 +11336,13 @@ Ext.define('Ext.env.Feature', {
  * * E{display*=none} CSS value "display" that contains the substring "none"
  * * E{display%=2} CSS value "display" that is evenly divisible by 2
  * * E{display!=none} CSS value "display" that does not equal "none"
+ */
+
+/**
+ * See {@link Ext.DomQuery} which is the singleton instance of this
+ * class.  You most likely don't need to instantiate Ext.dom.Query by
+ * yourself.
+ * @private
  */
 Ext.define('Ext.dom.Query', {
     /**
@@ -11079,10 +11406,25 @@ Ext.define('Ext.dom.Query', {
      * @return {Boolean}
      */
     is: function(el, q) {
+        var root = el.parentNode,
+            is;
+
         if (typeof el == "string") {
             el = document.getElementById(el);
         }
-        return this.select(q).indexOf(el) !== -1;
+
+        if (!root) {
+            root = document.createDocumentFragment();
+            root.appendChild(el);
+            is = this.select(q, root).indexOf(el) !== -1;
+            root.removeChild(el);
+            root = null;
+        }
+        else {
+            is = this.select(q).indexOf(el) !== -1;
+        }
+
+        return is;
     },
 
     isXml: function(el) {
@@ -11093,6 +11435,12 @@ Ext.define('Ext.dom.Query', {
 }, function() {
     Ext.ns('Ext.core');
     Ext.core.DomQuery = Ext.DomQuery = new this();
+    /**
+     * Shorthand of {@link Ext.dom.Query#select}
+     * @member Ext
+     * @method query
+     * @inheritdoc Ext.dom.Query#select
+     */
     Ext.query = Ext.Function.alias(Ext.DomQuery, 'select');
 });
 
@@ -11425,7 +11773,7 @@ Ext.define('Ext.dom.Helper', {
         isBeforeBegin = where == 'beforebegin';
         isAfterBegin = where == 'afterbegin';
 
-        range = Ext.feature.has.CreateContextualFragment ? el.ownerDocument.createRange() : undefined;
+        range = (Ext.feature.has.CreateContextualFragment && Ext.get(el).isPainted()) ? el.ownerDocument.createRange() : undefined;
         setStart = 'setStart' + (this.endRe.test(where) ? 'After' : 'Before');
 
         if (isBeforeBegin || where == 'afterend') {
@@ -11628,12 +11976,6 @@ Ext.define('Ext.mixin.Identifiable', {
 /**
  * Encapsulates a DOM element, adding simple DOM manipulation facilities, normalizing for browser differences.
  *
- * All instances of this class inherit the methods of Ext.Fx making visual effects easily available to all DOM elements.
- *
- * Note that the events documented in this class are not Ext events, they encapsulate browser events. To access the
- * underlying browser event, see {@link Ext.EventObject#browserEvent}. Some older browsers may not support the full range of
- * events. Which events are supported is beyond the control of Sencha Touch.
- *
  * ## Usage
  *
  *     // by id
@@ -11652,13 +11994,13 @@ Ext.define('Ext.dom.Element', {
     alternateClassName: 'Ext.Element',
 
     mixins: [
-        'Ext.mixin.Identifiable'
+         Ext.mixin.Identifiable 
     ],
 
-    requires: [
-        'Ext.dom.Query',
-        'Ext.dom.Helper'
-    ],
+               
+                        
+                        
+      
 
     observableType: 'element',
 
@@ -11775,13 +12117,10 @@ Ext.define('Ext.dom.Element', {
         /**
          * Retrieves Ext.dom.Element objects. {@link Ext#get} is alias for {@link Ext.dom.Element#get}.
          *
-         * **This method does not retrieve {@link Ext.Element Element}s.** This method retrieves Ext.dom.Element
-         * objects which encapsulate DOM elements. To retrieve a Element by its ID, use {@link Ext.ElementManager#get}.
-         *
          * Uses simple caching to consistently return the same object. Automatically fixes if an object was recreated with
          * the same id via AJAX or DOM.
          *
-         * @param {String/HTMLElement/Ext.Element} el The `id` of the node, a DOM Node or an existing Element.
+         * @param {String/HTMLElement/Ext.Element} element The `id` of the node, a DOM Node or an existing Element.
          * @return {Ext.dom.Element} The Element object (or `null` if no matching element was found).
          * @static
          * @inheritable
@@ -11937,7 +12276,7 @@ Ext.define('Ext.dom.Element', {
                 dom.id = id = this.mixins.identifiable.getUniqueId.call(this);
             }
 
-            this.self.cache[id] = this;
+            Ext.Element.cache[id] = this;
         }
 
         return id;
@@ -11945,7 +12284,7 @@ Ext.define('Ext.dom.Element', {
 
     setId: function(id) {
         var currentId = this.id,
-            cache = this.self.cache;
+            cache = Ext.Element.cache;
 
         if (currentId) {
             delete cache[currentId];
@@ -11994,10 +12333,15 @@ Ext.define('Ext.dom.Element', {
         domStyle.display = '';
     },
 
-    isPainted: function() {
-        var dom = this.dom;
-        return Boolean(dom && dom.offsetParent);
-    },
+    isPainted: (function() {
+        return !Ext.browser.is.IE ? function() {
+            var dom = this.dom;
+            return Boolean(dom && dom.offsetParent);
+        } : function() {
+            var dom = this.dom;
+            return Boolean(dom && (dom.offsetHeight !== 0 && dom.offsetWidth !== 0));
+        }
+    })(),
 
     /**
      * Sets the passed attributes as attributes of this element (a style attribute can be a string, object or function).
@@ -12122,8 +12466,8 @@ Ext.define('Ext.dom.Element', {
          * {@link Ext.dom.Element#fly}.
          *
          * Use this to make one-time references to DOM elements which are not going to be accessed again either by
-         * application code, or by Ext's classes. If accessing an element which will be processed regularly, then {@link
-         * Ext#get Ext.get} will be more appropriate to take advantage of the caching provided by the {@link Ext.dom.Element}
+         * application code, or by Ext's classes. If accessing an element which will be processed regularly, then {@link Ext#get Ext.get}
+         * will be more appropriate to take advantage of the caching provided by the {@link Ext.dom.Element}
          * class.
          *
          * @param {String/HTMLElement} element The DOM node or `id`.
@@ -12511,7 +12855,7 @@ Ext.dom.Element.addMembers({
 
     /**
      * Replaces the passed element with this element.
-     * @param {String/HTMLElement/Ext.dom.Element} el The element to replace.
+     * @param {String/HTMLElement/Ext.dom.Element} element The element to replace.
      * The id of the node, a DOM Node or an existing Element.
      * @return {Ext.dom.Element} This element.
      */
@@ -12713,8 +13057,7 @@ Ext.dom.Element.override({
 
     /**
      * Sets the X position of the element based on page coordinates.  Element must be part of the DOM tree to have page coordinates (`display:none` or elements not appended return `false`).
-     * @param {Number} The X position of the element
-     * @param {Boolean/Object} animate (optional) `true` for the default animation, or a standard Element animation config object.
+     * @param {Number} x The X position of the element
      * @return {Ext.dom.Element} this
      */
     setX: function(x) {
@@ -12723,8 +13066,7 @@ Ext.dom.Element.override({
 
     /**
      * Sets the Y position of the element based on page coordinates.  Element must be part of the DOM tree to have page coordinates (`display:none` or elements not appended return `false`).
-     * @param {Number} The Y position of the element.
-     * @param {Boolean/Object} animate (optional) `true` for the default animation, or a standard Element animation config object.
+     * @param {Number} y The Y position of the element.
      * @return {Ext.dom.Element} this
      */
     setY: function(y) {
@@ -12734,8 +13076,7 @@ Ext.dom.Element.override({
     /**
      * Sets the position of the element in page coordinates, regardless of how the element is positioned.
      * The element must be part of the DOM tree to have page coordinates (`display:none` or elements not appended return `false`).
-     * @param {Array} pos Contains X & Y [x, y] values for new position (coordinates are page-based).
-     * @param {Boolean/Object} animate (optional) `true` for the default animation, or a standard Element animation config object.
+     * @param {Number[]} pos Contains X & Y [x, y] values for new position (coordinates are page-based).
      * @return {Ext.dom.Element} this
      */
     setXY: function(pos) {
@@ -13115,8 +13456,8 @@ Ext.dom.Element.addMembers({
     /**
      * Removes the given CSS class(es) from this Element.
      * @param {String} names The CSS class(es) to remove from this element.
-     * @param {String} [prefix=''] (optional) Prefix to prepend to each class to be removed.
-     * @param {String} [suffix=''] (optional) Suffix to append to each class to be removed.
+     * @param {String} [prefix=''] Prefix to prepend to each class to be removed.
+     * @param {String} [suffix=''] Suffix to append to each class to be removed.
      */
     removeCls: function(names, prefix, suffix) {
         if (!names) {
@@ -13159,18 +13500,72 @@ Ext.dom.Element.addMembers({
     },
 
     /**
-     * Replaces a CSS class on the element with another.  If the old name does not exist, the new name will simply be added.
-     * @param {String} oldClassName The CSS class to replace.
-     * @param {String} newClassName The replacement CSS class.
+     * Replaces a CSS class on the element with another.
+     * If the old name does not exist, the new name will simply be added.
+     * @param {String} oldName The CSS class to replace.
+     * @param {String} newName The replacement CSS class.
+     * @param {String} [prefix=''] Prefix to prepend to each class to be replaced.
+     * @param {String} [suffix=''] Suffix to append to each class to be replaced.
      * @return {Ext.dom.Element} this
      */
     replaceCls: function(oldName, newName, prefix, suffix) {
-        return this.removeCls(oldName, prefix, suffix).addCls(newName, prefix, suffix);
+        if (!oldName && !newName) {
+            return this;
+        }
+
+        oldName = oldName || [];
+        newName = newName || [];
+
+        if (!this.isSynchronized) {
+            this.synchronize();
+        }
+
+        if (!suffix) {
+            suffix = '';
+        }
+
+        var dom = this.dom,
+            map = this.hasClassMap,
+            classList = this.classList,
+            SEPARATOR = this.SEPARATOR,
+            i, ln, name;
+
+        prefix = prefix ? prefix + SEPARATOR : '';
+        suffix = suffix ? SEPARATOR + suffix : '';
+
+        if (typeof oldName == 'string') {
+            oldName = oldName.split(this.spacesRe);
+        }
+        if (typeof newName == 'string') {
+            newName = newName.split(this.spacesRe);
+        }
+
+        for (i = 0, ln = oldName.length; i < ln; i++) {
+            name = prefix + oldName[i] + suffix;
+
+            if (map[name]) {
+                delete map[name];
+                Ext.Array.remove(classList, name);
+            }
+        }
+
+        for (i = 0, ln = newName.length; i < ln; i++) {
+            name = prefix + newName[i] + suffix;
+
+            if (!map[name]) {
+                map[name] = true;
+                classList.push(name);
+            }
+        }
+
+        dom.className = classList.join(' ');
+
+        return this;
     },
 
     /**
      * Checks if the specified CSS class exists on this element's DOM node.
-     * @param {String} className The CSS class to check for.
+     * @param {String} name The CSS class to check for.
      * @return {Boolean} `true` if the class exists, else `false`.
      */
     hasCls: function(name) {
@@ -13179,6 +13574,29 @@ Ext.dom.Element.addMembers({
         }
 
         return this.hasClassMap.hasOwnProperty(name);
+    },
+
+    /**
+     * Sets the specified CSS class on this element's DOM node.
+     * @param {String/Array} className The CSS class to set on this element.
+     */
+    setCls: function(className) {
+        var map = this.hasClassMap,
+            i, ln, name;
+
+        if (typeof className == 'string') {
+            className = className.split(this.spacesRe);
+        }
+
+        for (i = 0, ln = className.length; i < ln; i++) {
+            name = className[i];
+            if (!map[name]) {
+                map[name] = true;
+            }
+        }
+
+        this.classList = className.slice();
+        this.dom.className = className.join(' ');
     },
 
     /**
@@ -13686,6 +14104,7 @@ Ext.dom.Element.addMembers({
                 this.setStyle(styles);
             }
         }
+        return this;
     },
 
     /**
@@ -13736,7 +14155,15 @@ Ext.dom.Element.addMembers({
         } else {
             return me.addStyles.call(me, side, me.margins);
         }
-    }
+    },
+
+    translate: function() {
+        var transformStyleName = 'webkitTransform' in document.createElement('div').style ? 'webkitTransform' : 'transform';
+
+        return function(x, y, z) {
+            this.dom.style[transformStyleName] = 'translate3d(' + (x || 0) + 'px, ' + (y || 0) + 'px, ' + (z || 0) + 'px)';
+        }
+    }()
 });
 
 
@@ -13775,7 +14202,7 @@ Ext.dom.Element.addMembers({
 
     /**
      * Looks at this node and then at parent nodes for a match of the passed simple selector (e.g. 'div.some-class' or 'span:first-child')
-     * @param {String} selector The simple selector to test.
+     * @param {String} simpleSelector The simple selector to test.
      * @param {Number/String/HTMLElement/Ext.Element} maxDepth (optional)
      * The max depth to search as a number or element (defaults to `50 || document.body`)
      * @param {Boolean} returnEl (optional) `true` to return a Ext.Element object instead of DOM node.
@@ -13804,7 +14231,7 @@ Ext.dom.Element.addMembers({
 
     /**
      * Looks at parent nodes for a match of the passed simple selector (e.g. 'div.some-class' or 'span:first-child').
-     * @param {String} selector The simple selector to test.
+     * @param {String} simpleSelector The simple selector to test.
      * @param {Number/String/HTMLElement/Ext.Element} maxDepth (optional)
      * The max depth to search as a number or element (defaults to `10 || document.body`).
      * @param {Boolean} returnEl (optional) `true` to return a Ext.Element object instead of DOM node.
@@ -13818,7 +14245,7 @@ Ext.dom.Element.addMembers({
     /**
      * Walks up the dom looking for a parent node that matches the passed simple selector (e.g. 'div.some-class' or 'span:first-child').
      * This is a shortcut for `findParentNode()` that always returns an Ext.dom.Element.
-     * @param {String} selector The simple selector to test
+     * @param {String} simpleSelector The simple selector to test
      * @param {Number/String/HTMLElement/Ext.Element} maxDepth (optional)
      * The max depth to search as a number or element (defaults to `10 || document.body`).
      * @return {Ext.dom.Element/null} The matching DOM node (or `null` if no match was found).
@@ -13827,8 +14254,16 @@ Ext.dom.Element.addMembers({
         return this.findParentNode(simpleSelector, maxDepth, true);
     },
 
+    /**
+     * Selects elements based on the passed CSS selector to enable {@link Ext.Element Element} methods
+     * to be applied to many related elements in one statement through the returned. The element is the root of the search.
+     * {@link Ext.dom.CompositeElementLite CompositeElementLite} object.
+     * @param {String/HTMLElement[]} selector The CSS selector or an array of elements
+     * @param {Boolean} composite Return a CompositeElement as opposed to a CompositeElementLite. Defaults to false.
+     * @return {Ext.dom.CompositeElementLite/Ext.dom.CompositeElement}
+     */
     select: function(selector, composite) {
-        return Ext.dom.Element.select(selector, this.dom, composite);
+        return Ext.dom.Element.select(selector, composite, this.dom);
     },
 
     /**
@@ -13966,8 +14401,8 @@ Ext.dom.Element.addMembers({
 Ext.define('Ext.dom.CompositeElementLite', {
     alternateClassName: ['Ext.CompositeElementLite', 'Ext.CompositeElement'],
 
-    requires: ['Ext.dom.Element'],
-    
+                                  
+
     // We use the @mixins tag above to document that CompositeElement has
     // all the same methods as Element, but the @mixins tag also pulls in
     // configs and properties which we don't want, so hide them explicitly:
@@ -14325,25 +14760,25 @@ Ext.define('Ext.dom.CompositeElementLite', {
 
     prototype.on = prototype.addListener;
 
-    if (Ext.DomQuery){
-        Element.selectorFunction = Ext.DomQuery.select;
-    }
+    Element.selectorFunction = Ext.DomQuery.select;
 
     /**
      * Selects elements based on the passed CSS selector to enable {@link Ext.Element Element} methods
      * to be applied to many related elements in one statement through the returned
      * {@link Ext.dom.CompositeElementLite CompositeElementLite} object.
      * @param {String/HTMLElement[]} selector The CSS selector or an array of elements
+     * @param {Boolean} composite Return a CompositeElement as opposed to a CompositeElementLite. Defaults to false.
      * @param {HTMLElement/String} [root] The root element of the query or id of the root
-     * @return {Ext.dom.CompositeElementLite}
+     * @return {Ext.dom.CompositeElementLite/Ext.dom.CompositeElement}
      * @member Ext.dom.Element
      * @method select
+     * @static
      */
-   Element.select = function(selector, root) {
+    Ext.dom.Element.select = function(selector, composite, root) {
         var elements;
 
         if (typeof selector == "string") {
-            elements = Element.selectorFunction(selector, root);
+            elements = Ext.dom.Element.selectorFunction(selector, root);
         }
         else if (selector.length !== undefined) {
             elements = selector;
@@ -14354,7 +14789,7 @@ Ext.define('Ext.dom.CompositeElementLite', {
             //</debug>
         }
 
-        return new Ext.CompositeElementLite(elements);
+        return (composite === true) ? new Ext.dom.CompositeElement(elements) : new Ext.dom.CompositeElementLite(elements);
     };
 
     /**
@@ -14375,6 +14810,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.data.proxy.Client": [
     "Ext.proxy.ClientProxy"
   ],
+  "Ext.util.InputBlocker": [],
   "Ext.fx.easing.Bounce": [],
   "Ext.data.Types": [],
   "Ext.util.Translatable": [],
@@ -14396,6 +14832,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.field.Hidden": [
     "Ext.form.Hidden"
   ],
+  "Ext.device.SQLite.SQLTransaction": [],
   "Ext.util.TranslatableGroup": [],
   "Ext.field.Number": [
     "Ext.form.Number"
@@ -14421,8 +14858,8 @@ Ext.ClassManager.addNameAlternateMappings({
     "Ext.form.FormPanel"
   ],
   "Ext.util.Grouper": [],
-  "Ext.util.translatable.CssPosition": [],
   "Ext.util.paintmonitor.Abstract": [],
+  "Ext.util.translatable.CssPosition": [],
   "Ext.direct.RemotingProvider": [],
   "Ext.data.Request": [],
   "Ext.data.NodeInterface": [
@@ -14443,6 +14880,9 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.fx.runner.CssTransition": [],
   "Ext.fx.layout.card.Slide": [],
   "Ext.Anim": [],
+  "Ext.field.DatePickerNative": [
+    "Ext.form.DatePickerNative"
+  ],
   "Ext.XTemplateCompiler": [],
   "Ext.util.Wrapper": [],
   "Ext.data.DirectStore": [],
@@ -14475,8 +14915,8 @@ Ext.ClassManager.addNameAlternateMappings({
   ],
   "Ext.event.Dom": [],
   "Ext.app.Application": [],
-  "Ext.AbstractComponent": [],
   "Ext.Template": [],
+  "Ext.AbstractComponent": [],
   "Ext.device.Push": [],
   "Ext.fx.easing.BoundMomentum": [],
   "Ext.dataview.List": [
@@ -14486,13 +14926,16 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.util.translatable.Dom": [],
   "Ext.viewport.Viewport": [],
   "Ext.event.recognizer.VerticalSwipe": [],
+  "Ext.BingMap": [],
   "Ext.device.geolocation.Sencha": [],
   "Ext.event.Event": [
     "Ext.EventObject"
   ],
+  "Ext.dataview.component.SimpleListItem": [],
   "Ext.behavior.Behavior": [],
   "Ext.dataview.ListItemHeader": [],
   "Ext.event.publisher.TouchGesture": [],
+  "Ext.AnimationQueue": [],
   "Ext.data.SortTypes": [],
   "Ext.fx.easing.EaseOut": [],
   "Ext.event.recognizer.LongPress": [],
@@ -14572,14 +15015,15 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.tab.Panel": [
     "Ext.TabPanel"
   ],
-  "Ext.scroll.indicator.Throttled": [],
   "Ext.mixin.Traversable": [],
+  "Ext.util.sizemonitor.Default": [],
   "Ext.util.AbstractMixedCollection": [],
   "Ext.device.connection.Sencha": [],
   "Ext.fx.animation.SlideOut": [],
   "Ext.data.JsonStore": [],
   "Ext.fx.layout.card.Pop": [],
   "Ext.direct.RemotingEvent": [],
+  "Ext.device.SQLite": [],
   "Ext.plugin.PullRefresh": [],
   "Ext.log.writer.Console": [],
   "Ext.field.Spinner": [
@@ -14593,8 +15037,8 @@ Ext.ClassManager.addNameAlternateMappings({
   ],
   "Ext.data.Field": [],
   "Ext.fx.layout.Card": [],
-  "Ext.Label": [],
   "Ext.TaskQueue": [],
+  "Ext.Label": [],
   "Ext.data.StoreManager": [
     "Ext.StoreMgr",
     "Ext.data.StoreMgr",
@@ -14606,6 +15050,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.device.push.Abstract": [],
   "Ext.util.DelayedTask": [],
   "Ext.Spacer": [],
+  "Ext.device.sqlite.Sencha": [],
   "Ext.fx.easing.Momentum": [],
   "Ext.mixin.Selectable": [],
   "Ext.fx.easing.Abstract": [],
@@ -14669,6 +15114,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.navigation.View": [
     "Ext.NavigationView"
   ],
+  "Ext.device.SQLite.SQLResultSetRowList": [],
   "Ext.data.ResultSet": [],
   "Ext.data.association.HasMany": [
     "Ext.data.HasManyAssociation"
@@ -14733,7 +15179,6 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.ItemCollection": [],
   "Ext.log.formatter.Default": [],
   "Ext.navigation.Bar": [],
-  "Ext.scroll.indicator.Default": [],
   "Ext.data.ModelManager": [
     "Ext.ModelMgr",
     "Ext.ModelManager"
@@ -14765,6 +15210,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.Evented": [
     "Ext.EventedBase"
   ],
+  "Ext.device.SQLite.SQLResultSet": [],
   "Ext.dataview.element.Container": [],
   "Ext.carousel.Indicator": [
     "Ext.Carousel.Indicator"
@@ -14785,9 +15231,11 @@ Ext.ClassManager.addNameAlternateMappings({
     "Ext.data.HasOneAssociation"
   ],
   "Ext.table.Table": [],
+  "Ext.viewport.WindowsPhone": [
+    "Ext.viewport.WP"
+  ],
   "Ext.ActionSheet": [],
   "Ext.layout.Box": [],
-  "Ext.bb.CrossCut": [],
   "Ext.data.Errors": [],
   "Ext.Video": [],
   "Ext.field.Text": [
@@ -14852,12 +15300,14 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.fx.layout.card.ScrollReveal": [],
   "Ext.data.Operation": [],
   "Ext.device.notification.Simulator": [],
+  "Ext.scroll.indicator.Rounded": [],
   "Ext.fx.animation.Abstract": [],
   "Ext.field.Field": [
     "Ext.form.Field"
   ],
   "Ext.log.filter.Priority": [],
   "Ext.util.sizemonitor.Abstract": [],
+  "Ext.device.SQLite.Database": [],
   "Ext.util.paintmonitor.OverflowChange": [],
   "Ext.scroll.Scroller": [],
   "Ext.util.SizeMonitor": [],
@@ -14870,7 +15320,8 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.dom.CompositeElement": [
     "Ext.CompositeElement"
   ]
-});Ext.ClassManager.addNameAliasMappings({
+});
+Ext.ClassManager.addNameAliasMappings({
   "Ext.data.identifier.Uuid": [
     "data.identifier.uuid"
   ],
@@ -14878,6 +15329,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.app.Profile": [],
   "Ext.fx.Runner": [],
   "Ext.data.proxy.Client": [],
+  "Ext.util.InputBlocker": [],
   "Ext.fx.easing.Bounce": [],
   "Ext.data.Types": [],
   "Ext.util.Translatable": [],
@@ -14903,6 +15355,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.field.Hidden": [
     "widget.hiddenfield"
   ],
+  "Ext.device.SQLite.SQLTransaction": [],
   "Ext.util.TranslatableGroup": [],
   "Ext.field.Number": [
     "widget.numberfield"
@@ -14929,8 +15382,8 @@ Ext.ClassManager.addNameAlternateMappings({
     "widget.formpanel"
   ],
   "Ext.util.Grouper": [],
-  "Ext.util.translatable.CssPosition": [],
   "Ext.util.paintmonitor.Abstract": [],
+  "Ext.util.translatable.CssPosition": [],
   "Ext.direct.RemotingProvider": [
     "direct.remotingprovider"
   ],
@@ -14957,6 +15410,9 @@ Ext.ClassManager.addNameAlternateMappings({
     "fx.layout.card.slide"
   ],
   "Ext.Anim": [],
+  "Ext.field.DatePickerNative": [
+    "widget.datepickernativefield"
+  ],
   "Ext.XTemplateCompiler": [],
   "Ext.util.Wrapper": [],
   "Ext.data.DirectStore": [
@@ -14991,8 +15447,8 @@ Ext.ClassManager.addNameAlternateMappings({
   ],
   "Ext.event.Dom": [],
   "Ext.app.Application": [],
-  "Ext.AbstractComponent": [],
   "Ext.Template": [],
+  "Ext.AbstractComponent": [],
   "Ext.device.Push": [],
   "Ext.fx.easing.BoundMomentum": [],
   "Ext.dataview.List": [
@@ -15004,13 +15460,20 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.util.translatable.Dom": [],
   "Ext.viewport.Viewport": [],
   "Ext.event.recognizer.VerticalSwipe": [],
+  "Ext.BingMap": [
+    "widget.bingmap"
+  ],
   "Ext.device.geolocation.Sencha": [],
   "Ext.event.Event": [],
+  "Ext.dataview.component.SimpleListItem": [
+    "widget.simplelistitem"
+  ],
   "Ext.behavior.Behavior": [],
   "Ext.dataview.ListItemHeader": [
     "widget.listitemheader"
   ],
   "Ext.event.publisher.TouchGesture": [],
+  "Ext.AnimationQueue": [],
   "Ext.data.SortTypes": [],
   "Ext.fx.easing.EaseOut": [
     "easing.ease-out"
@@ -15114,8 +15577,8 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.tab.Panel": [
     "widget.tabpanel"
   ],
-  "Ext.scroll.indicator.Throttled": [],
   "Ext.mixin.Traversable": [],
+  "Ext.util.sizemonitor.Default": [],
   "Ext.util.AbstractMixedCollection": [],
   "Ext.device.connection.Sencha": [],
   "Ext.fx.animation.SlideOut": [
@@ -15130,6 +15593,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.direct.RemotingEvent": [
     "direct.rpc"
   ],
+  "Ext.device.SQLite": [],
   "Ext.plugin.PullRefresh": [
     "plugin.pullrefresh"
   ],
@@ -15145,10 +15609,10 @@ Ext.ClassManager.addNameAlternateMappings({
     "data.field"
   ],
   "Ext.fx.layout.Card": [],
+  "Ext.TaskQueue": [],
   "Ext.Label": [
     "widget.label"
   ],
-  "Ext.TaskQueue": [],
   "Ext.data.StoreManager": [],
   "Ext.fx.animation.PopOut": [
     "animation.popOut"
@@ -15160,6 +15624,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.Spacer": [
     "widget.spacer"
   ],
+  "Ext.device.sqlite.Sencha": [],
   "Ext.fx.easing.Momentum": [],
   "Ext.mixin.Selectable": [],
   "Ext.fx.easing.Abstract": [],
@@ -15175,8 +15640,8 @@ Ext.ClassManager.addNameAlternateMappings({
   ],
   "Ext.fx.Easing": [],
   "Ext.Img": [
-    "widget.img",
-    "widget.image"
+    "widget.image",
+    "widget.img"
   ],
   "Ext.picker.Date": [
     "widget.datepicker"
@@ -15232,6 +15697,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.navigation.View": [
     "widget.navigationview"
   ],
+  "Ext.device.SQLite.SQLResultSetRowList": [],
   "Ext.data.ResultSet": [],
   "Ext.data.association.HasMany": [
     "association.hasmany"
@@ -15248,8 +15714,8 @@ Ext.ClassManager.addNameAlternateMappings({
   ],
   "Ext.MessageBox": [],
   "Ext.layout.Default": [
-    "layout.default",
-    "layout.auto"
+    "layout.auto",
+    "layout.default"
   ],
   "Ext.fx.animation.Fade": [
     "animation.fade",
@@ -15306,7 +15772,6 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.ItemCollection": [],
   "Ext.log.formatter.Default": [],
   "Ext.navigation.Bar": [],
-  "Ext.scroll.indicator.Default": [],
   "Ext.data.ModelManager": [],
   "Ext.data.Validations": [],
   "Ext.util.translatable.Abstract": [],
@@ -15339,6 +15804,7 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.device.Camera": [],
   "Ext.mixin.Filterable": [],
   "Ext.Evented": [],
+  "Ext.device.SQLite.SQLResultSet": [],
   "Ext.dataview.element.Container": [],
   "Ext.carousel.Indicator": [
     "widget.carouselindicator"
@@ -15365,14 +15831,12 @@ Ext.ClassManager.addNameAlternateMappings({
   "Ext.table.Table": [
     "widget.table"
   ],
+  "Ext.viewport.WindowsPhone": [],
   "Ext.ActionSheet": [
     "widget.actionsheet"
   ],
   "Ext.layout.Box": [
     "layout.tablebox"
-  ],
-  "Ext.bb.CrossCut": [
-    "widget.crosscut"
   ],
   "Ext.data.Errors": [],
   "Ext.Video": [
@@ -15460,12 +15924,14 @@ Ext.ClassManager.addNameAlternateMappings({
   ],
   "Ext.data.Operation": [],
   "Ext.device.notification.Simulator": [],
+  "Ext.scroll.indicator.Rounded": [],
   "Ext.fx.animation.Abstract": [],
   "Ext.field.Field": [
     "widget.field"
   ],
   "Ext.log.filter.Priority": [],
   "Ext.util.sizemonitor.Abstract": [],
+  "Ext.device.SQLite.Database": [],
   "Ext.util.paintmonitor.OverflowChange": [],
   "Ext.scroll.Scroller": [],
   "Ext.util.SizeMonitor": [],

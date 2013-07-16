@@ -62,8 +62,19 @@ Ext.define('Ext.field.Toggle', {
          * @cfg
          * @inheritdoc
          */
-        cls: 'x-toggle-field'
+        cls: 'x-toggle-field',
+
+        /* @cfg {String} labelAlign The position to render the label relative to the field input.
+         * Available options are: 'top', 'left', 'bottom' and 'right'
+         * @accessor
+         */
+        labelAlign: 'left'
     },
+
+    platformConfig: [{
+        theme: ['Windows'],
+        labelAlign: 'left'
+    }],
 
     /**
      * @event change
@@ -73,13 +84,15 @@ Ext.define('Ext.field.Toggle', {
      *         xtype: 'togglefield',
      *         label: 'Event Example',
      *         listeners: {
-     *             change: function(field, newValue) {
+     *             change: function(field, slider, thumb, newValue, oldValue) {
      *                 console.log('Value of this toggle has changed:', (newValue) ? 'ON' : 'OFF');
      *             }
      *         }
      *     });
-     * 
-     * @param {Ext.field.Toggle} me
+     *
+     * @param {Ext.field.Toggle} this
+     * @param {Ext.slider.Toggle} Slider instance
+     * @param {Ext.slider.Thumb} Thumb instance
      * @param {Number} newValue the new value of this thumb
      * @param {Number} oldValue the old value of this thumb
      */
@@ -113,14 +126,34 @@ Ext.define('Ext.field.Toggle', {
         maxValueCls: 'x-toggle-on'
     },
 
+    /**
+     * For toggle 'on' state.
+     */
+    toggleOnLabel: 'On',
+
+    /**
+     * For toggle 'off' state.
+     */
+    toggleOffLabel: 'Off',
+
     // @private
     applyComponent: function(config) {
+        // @TODO: This also needs to be looked at
+
+//        if(!this.getLabel() && Ext.getThemeName() == 'WP') {
+//            this.setLabel(this.toggleOffLabel);
+//            this.on({
+//                scope: this,
+//                change: 'onChange'
+//            });
+//        }
+
         return Ext.factory(config, Ext.slider.Toggle);
     },
 
     /**
      * Sets the value of the toggle.
-     * @param {Number} value **1** for toggled, **0** for untoggled.
+     * @param {Number} newValue **1** for toggled, **0** for untoggled.
      * @return {Object} this
      */
     setValue: function(newValue) {
@@ -152,5 +185,9 @@ Ext.define('Ext.field.Toggle', {
         this.setValue((value == 1) ? 0 : 1);
 
         return this;
+    },
+
+    onChange: function(){
+        this.setLabel((this.getValue() == 1) ? this.toggleOnLabel : this.toggleOffLabel);
     }
 });

@@ -1,0 +1,49 @@
+/*
+    Document   : _FileUp
+    Created on : Mar 3, 2013, 9:02:55 AM
+    Author     : kostysh(at)gmail.com
+    Description: Styles for FileUp component
+*/
+
+@include sencha-button-ui('fileready', #6dbc76, 'glossy');
+
+@include sencha-button-ui('fileupload', #67cef7, 'glossy');
+
+.x-fileup {
+    
+}
+
+.x-fileup-ready {
+    
+}
+
+$loading-spinner-color: #000000;
+@include sencha-loading-spinner;
+.x-fileup-uploading {
+    .x-loading-spinner {
+        font-size: 100%;
+    }
+}
+
+.x-fileup-badge {
+    text-overflow: clip;
+    background-clip: padding-box;
+    border-radius: 0.25em;
+    padding: 0.1em 0.3em;
+    z-index: 2;
+    text-shadow: rgba(0,0,0,0.5) 0 -0.08em 0;
+    box-shadow: rgba(0,0,0,0.5) 0 0.1em 0.1em;
+    overflow: hidden;
+    color: rgb(252, 239, 239);
+    border: 1px solid #900;
+    position: absolute;
+    width: auto;
+    min-width: 2em;
+    line-height: 1.2em;
+    font-size: .6em;
+    right: 0px;
+    top: -.2em;
+    max-width: 95%;
+    background-image: -webkit-linear-gradient(top, #ff1a1a,#e60000 3%,#b30000);
+    display: inline-block;
+}

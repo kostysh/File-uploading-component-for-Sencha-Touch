@@ -5,11 +5,11 @@
  * @fileOverview File uploading component based on Ext.Button
  *
  * @author Constantine V. Smirnov kostysh(at)gmail.com
- * @date 20130203
- * @version 2.0
+ * @date 20130716
+ * @version 2.0.1
  * @license GNU GPL v3.0
  *
- * @requires Sencha Touch 2.1.1
+ * @requires Sencha Touch 2.2.1
  * 
  * This component can works in two modes (switched by loadAsDataUrl config):
  * 1) Load local files as dataUrl. 
@@ -205,7 +205,6 @@ Ext.define('Ext.ux.Fileup', {
     
     config: {
         cls: Ext.baseCSSPrefix + 'fileup',
-        badgeCls: Ext.baseCSSPrefix + 'fileup-badge',
         
         /**
          * @cfg {String} name Input element name, check on server for $_FILES['userfile']
@@ -349,7 +348,7 @@ Ext.define('Ext.ux.Fileup', {
             switch (state) {
                 case 'browse':
                     me.currentState = 'browse';
-                    me.reset();
+                    me.reset();                    
                     break;
                     
                 case 'ready':

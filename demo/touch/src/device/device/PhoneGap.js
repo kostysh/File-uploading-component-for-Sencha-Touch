@@ -16,6 +16,6 @@ Ext.define('Ext.device.device.PhoneGap', {
     onReady: function() {
         this.name = device.name;
         this.uuid = device.uuid;
-        this.platform = device.platformName || Ext.os.name;
+        this.platform = device.platform || Ext.os.name;
     }
 });
